@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Lexend', 'Inter', system-ui, sans-serif;
+  }
+}
+
+.font-pixel {
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: 0.02em;
+}
+
+.pixel-crisp {
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+}
+
+/* Isometric 2.5D helpers */
+.iso-floor-grid {
+  background-image:
+    linear-gradient(30deg, rgba(148, 163, 184, 0.16) 12%, transparent 12.5%, transparent 87%, rgba(148, 163, 184, 0.16) 87.5%, rgba(148, 163, 184, 0.16)),
+    linear-gradient(150deg, rgba(148, 163, 184, 0.16) 12%, transparent 12.5%, transparent 87%, rgba(148, 163, 184, 0.16) 87.5%, rgba(148, 163, 184, 0.16)),
+    linear-gradient(30deg, rgba(148, 163, 184, 0.16) 12%, transparent 12.5%, transparent 87%, rgba(148, 163, 184, 0.16) 87.5%, rgba(148, 163, 184, 0.16)),
+    linear-gradient(150deg, rgba(148, 163, 184, 0.16) 12%, transparent 12.5%, transparent 87%, rgba(148, 163, 184, 0.16) 87.5%, rgba(148, 163, 184, 0.16));
+  background-size: 48px 84px;
+  background-position: 0 0, 0 0, 24px 42px, 24px 42px;
+}
+
+/* High contrast accessibility mode */
+.high-contrast {
+  filter: contrast(1.14);
+}
+
+.high-contrast body,
+.high-contrast .hc-surface {
+  background-color: #ffffff !important;
+  color: #020617 !important;
+  border-color: #0f172a !important;
+}
+
+.high-contrast .hc-muted {
+  color: #1e293b !important;
+}
+
+.high-contrast button:focus-visible,
+.high-contrast input:focus-visible,
+.high-contrast select:focus-visible,
+.high-contrast textarea:focus-visible {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 2px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
