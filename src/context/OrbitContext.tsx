@@ -223,6 +223,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setState({
       ...fresh,
       session: state.session,
+      geminiApiKey: state.geminiApiKey,
     });
     pushToast('Dados demo restaurados!', 'Todas as demandas e avatares voltaram ao estado inicial.', 'info');
   };

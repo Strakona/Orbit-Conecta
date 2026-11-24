@@ -34,7 +34,7 @@ const OrbitWorkspace: React.FC = () => {
         {state.activeTab === 'LAB' && (
           <>
             {state.activeDemandId ? (
-              <DemandRoom demandId={state.activeDemandId} />
+              <DemandRoom key={state.activeDemandId} demandId={state.activeDemandId} />
             ) : state.viewMode === 'MAP' ? (
               <IsometricMap
                 onOpenDemandBoard={() => setBoardOpen(true)}
@@ -54,7 +54,12 @@ const OrbitWorkspace: React.FC = () => {
 
       {/* Auditorium Collective Test Mode Modal */}
       {auditoriumDemand && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Auditório de Pitches"
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-amber-300">
             <div className="bg-[#0B132B] text-white px-5 py-3.5 flex items-center justify-between">
               <div>

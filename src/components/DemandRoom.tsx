@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Bot,
@@ -29,6 +29,45 @@ import { UnifiedPreview } from './UnifiedPreview';
 
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
+const SelectOptionsInput: React.FC<{
+  options: string[];
+  onChange: (nextOptions: string[]) => void;
+}> = ({ options, onChange }) => {
+  const [text, setText] = useState(() => options.join(', '));
+
+  useEffect(() => {
+    const parsed = text
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    const same =
+      parsed.length === options.length && parsed.every((val, i) => val === options[i]);
+    if (!same) {
+      setText(options.join(', '));
+    }
+    // Only re-sync from props when normalized options change externally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
+
+  const handleChange = (val: string) => {
+    setText(val);
+    const parsed = val
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    onChange(parsed);
+  };
+
+  return (
+    <input
+      value={text}
+      onChange={(e) => handleChange(e.target.value)}
+      placeholder="Opções separadas por vírgula"
+      className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+    />
+  );
+};
+
 export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   const {
     state,
@@ -45,8 +84,10 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   } = useOrbit();
 
   const demand = state.demands.find((d) => d.id === demandId);
-  const currentStudent =
-    state.students.find((s) => s.id === state.session?.studentId) ?? state.students[0];
+  const isStudent = state.session?.role === 'ALUNO';
+  const currentStudent = isStudent
+    ? state.students.find((s) => s.id === state.session?.studentId)
+    : undefined;
 
   const defaultStage: StageKey =
     currentStudent?.location === demandId && currentStudent.activeStage
@@ -88,6 +129,22 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   const [helpNote, setHelpNote] = useState('');
   const [showHelpBox, setShowHelpBox] = useState(false);
 
+  useEffect(() => {
+    if (demand?.artifacts.ui) setUiDraft(demand.artifacts.ui);
+  }, [demand?.artifacts.ui]);
+
+  useEffect(() => {
+    if (demand?.artifacts.logic) setLogicDraft(demand.artifacts.logic);
+  }, [demand?.artifacts.logic]);
+
+  useEffect(() => {
+    if (demand?.artifacts.ai) setAiDraft(demand.artifacts.ai);
+  }, [demand?.artifacts.ai]);
+
+  useEffect(() => {
+    if (demand?.artifacts.qa) setQaDraft(demand.artifacts.qa);
+  }, [demand?.artifacts.qa]);
+
   if (!demand) {
     return (
       <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
@@ -106,20 +163,21 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   const stageAssignee = state.students.find((s) => s.id === stageObj.assigneeId);
   const roomStudents = state.students.filter((s) => s.location === demand.id);
 
+  const saveAllWorkbenches = () => {
+    updateUiArtifact(demand.id, uiDraft);
+    updateLogicArtifact(demand.id, logicDraft);
+    updateAiArtifact(demand.id, aiDraft);
+    updateQaArtifact(demand.id, qaDraft);
+  };
+
   const handleSaveCurrentWorkbench = () => {
-    if (activeStage === 'UI_UX') updateUiArtifact(demand.id, uiDraft);
-    if (activeStage === 'LOGICA_REGRAS') updateLogicArtifact(demand.id, logicDraft);
-    if (activeStage === 'IA_DADOS') updateAiArtifact(demand.id, aiDraft);
-    if (activeStage === 'QA_TESTES') updateQaArtifact(demand.id, qaDraft);
-    pushToast('Progresso salvo!', `Bancada ${STAGE_META[activeStage].shortLabel} atualizada.`, 'success');
+    saveAllWorkbenches();
+    pushToast('Progresso salvo!', 'Todas as bancadas da sala foram atualizadas.', 'success');
   };
 
   const handleSubmitForEvaluation = () => {
-    // Auto-save before submitting
-    if (activeStage === 'UI_UX') updateUiArtifact(demand.id, uiDraft);
-    if (activeStage === 'LOGICA_REGRAS') updateLogicArtifact(demand.id, logicDraft);
-    if (activeStage === 'IA_DADOS') updateAiArtifact(demand.id, aiDraft);
-    if (activeStage === 'QA_TESTES') updateQaArtifact(demand.id, qaDraft);
+    if (!currentStudent) return;
+    saveAllWorkbenches();
     submitStageForReview(demand.id, activeStage, currentStudent.id);
   };
 
@@ -466,16 +524,27 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       <option value="number">Número</option>
                       <option value="select">Lista (Select)</option>
                     </select>
-                    <input
-                      value={field.placeholder ?? ''}
-                      onChange={(e) => {
-                        const next = [...uiDraft.fields];
-                        next[idx] = { ...field, placeholder: e.target.value };
-                        setUiDraft({ ...uiDraft, fields: next });
-                      }}
-                      placeholder="Exemplo / dica"
-                      className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                    />
+                    {field.type === 'select' ? (
+                      <SelectOptionsInput
+                        options={field.options ?? []}
+                        onChange={(nextOptions) => {
+                          const next = [...uiDraft.fields];
+                          next[idx] = { ...field, options: nextOptions };
+                          setUiDraft({ ...uiDraft, fields: next });
+                        }}
+                      />
+                    ) : (
+                      <input
+                        value={field.placeholder ?? ''}
+                        onChange={(e) => {
+                          const next = [...uiDraft.fields];
+                          next[idx] = { ...field, placeholder: e.target.value };
+                          setUiDraft({ ...uiDraft, fields: next });
+                        }}
+                        placeholder="Exemplo / dica"
+                        className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={() =>
@@ -829,49 +898,60 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                 <span>Salvar Progresso</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setShowHelpBox((v) => !v)}
-                className="w-full py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Hand className="w-4 h-4" />
-                <span>✋ Pedir Ajuda ao Professor</span>
-              </button>
-
-              {showHelpBox && (
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
-                  <input
-                    value={helpNote}
-                    onChange={(e) => setHelpNote(e.target.value)}
-                    placeholder="Qual é sua dúvida rápida?"
-                    className="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs"
-                  />
+              {isStudent && currentStudent ? (
+                <>
                   <button
                     type="button"
-                    onClick={() => {
-                      raiseHand(
-                        currentStudent.id,
-                        'AJUDA',
-                        helpNote || `Dúvida na bancada ${STAGE_META[activeStage].shortLabel}`
-                      );
-                      setShowHelpBox(false);
-                      setHelpNote('');
-                    }}
-                    className="w-full py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs cursor-pointer"
+                    onClick={() => setShowHelpBox((v) => !v)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    Levantar Mão na Mesa Central
+                    <Hand className="w-4 h-4" />
+                    <span>✋ Pedir Ajuda ao Professor</span>
                   </button>
+
+                  {showHelpBox && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                      <input
+                        value={helpNote}
+                        onChange={(e) => setHelpNote(e.target.value)}
+                        placeholder="Qual é sua dúvida rápida?"
+                        className="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          raiseHand(
+                            currentStudent.id,
+                            'AJUDA',
+                            helpNote || `Dúvida na bancada ${STAGE_META[activeStage].shortLabel}`
+                          );
+                          setShowHelpBox(false);
+                          setHelpNote('');
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs cursor-pointer"
+                      >
+                        Levantar Mão na Mesa Central
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSubmitForEvaluation}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>✅ Concluir Etapa e Enviar para Avaliação</span>
+                  </button>
+                </>
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                  Você está no modo{' '}
+                  <strong>{state.session?.role === 'PROFESSOR' ? 'Professor Mentor' : 'Coordenação SMED'}</strong>.
+                  Para pedir ajuda ou enviar etapa como estudante, alterne para o perfil{' '}
+                  <strong>Aluno</strong> no cabeçalho.
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={handleSubmitForEvaluation}
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>✅ Concluir Etapa e Enviar para Avaliação</span>
-              </button>
             </div>
           </div>
 

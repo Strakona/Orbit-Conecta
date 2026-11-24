@@ -264,7 +264,12 @@ export const PublicShowcase: React.FC = () => {
 
       {/* Modal to test a delivered prototype */}
       {testingDemand && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Protótipo Oficial"
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
             <div className="bg-[#0B132B] text-white px-5 py-3.5 flex items-center justify-between">
               <div>

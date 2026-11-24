@@ -36,10 +36,16 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
+  const isStudent = state.session?.role === 'ALUNO';
   const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Sala de Demandas Municipais"
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
+    >
       <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="bg-[#0B132B] text-white px-5 py-4 flex items-center justify-between">
@@ -160,7 +166,7 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
                               </div>
                             </div>
                           </div>
-                        ) : (
+                        ) : isStudent ? (
                           <button
                             onClick={() => {
                               claimStage(demand.id, stageKey);
@@ -171,6 +177,10 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
                             <Sparkles className="w-3.5 h-3.5" />
                             <span>Assumir Etapa</span>
                           </button>
+                        ) : (
+                          <div className="text-[11px] font-medium text-slate-500 text-center py-1.5">
+                            Etapa disponível ({state.session?.role === 'PROFESSOR' ? 'visão Mentor' : 'visão Gestão'})
+                          </div>
                         )}
                       </div>
                     </div>

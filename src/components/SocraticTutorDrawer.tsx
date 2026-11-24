@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bot, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META, TUTOR_PERSONAS } from '../data/seedData';
@@ -16,6 +16,7 @@ interface ChatMsg {
   role: 'user' | 'tutor';
   text: string;
   mode?: 'GEMINI_LIVE' | 'SIMULADO';
+  personaName?: string;
 }
 
 export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
@@ -28,19 +29,40 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
   const [personaId, setPersonaId] = useState<TutorPersonaId>('GERAL');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const activePersona =
+    TUTOR_PERSONAS.find((p) => p.id === personaId) ?? TUTOR_PERSONAS[0];
+  const actorUuid =
+    state.session?.role === 'ALUNO'
+      ? (state.students.find((s) => s.id === state.session?.studentId) ?? state.students[0]).uuid
+      : state.session?.role === 'PROFESSOR'
+      ? 'mentor-cemi2-preview'
+      : 'coord-smed-preview';
+
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       role: 'tutor',
+      personaName: TUTOR_PERSONAS[0].name,
       text: `Olá! Estou aqui como seu Tutor Socrático na bancada "${STAGE_META[activeStage].shortLabel}" do projeto "${demand.shortName}". Não entrego respostas prontas, mas faço perguntas que destravam suas ideias! Qual é sua dúvida agora?`,
     },
   ]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].role === 'tutor' && !prev[0].mode) {
+        return [
+          {
+            role: 'tutor',
+            personaName: activePersona.name,
+            text: `Olá! Estou aqui como seu Tutor Socrático na bancada "${STAGE_META[activeStage].shortLabel}" do projeto "${demand.shortName}". Não entrego respostas prontas, mas faço perguntas que destravam suas ideias! Qual é sua dúvida agora?`,
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [activeStage, demand.shortName, activePersona.name]);
 
-  const activePersona =
-    TUTOR_PERSONAS.find((p) => p.id === personaId) ?? TUTOR_PERSONAS[0];
-  const currentStudent =
-    state.students.find((s) => s.id === state.session?.studentId) ?? state.students[0];
+  if (!isOpen) return null;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,9 +74,10 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
     setMessages(nextHistory);
     setLoading(true);
 
+    const respondingPersona = activePersona;
     const response = await askSocraticTutor({
       apiKey: state.geminiApiKey,
-      studentUuid: currentStudent.uuid, // LGPD: anonymized UUID only
+      studentUuid: actorUuid, // LGPD: anonymized UUID only
       demandTitle: demand.title,
       secretaria: demand.secretaria,
       stageKey: activeStage,
@@ -65,11 +88,16 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
 
     setMessages((prev) => [
       ...prev,
-      { role: 'tutor', text: response.reply, mode: response.mode },
+      {
+        role: 'tutor',
+        text: response.reply,
+        mode: response.mode,
+        personaName: respondingPersona.name,
+      },
     ]);
 
     addAuditLog({
-      studentUuid: currentStudent.uuid,
+      studentUuid: actorUuid,
       demandId: demand.id,
       demandTitle: demand.title,
       stageKey: activeStage,
@@ -121,7 +149,7 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
       <div className="px-3.5 py-2 bg-emerald-50 border-b border-emerald-200 text-[11px] text-emerald-900 flex items-center gap-1.5">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
         <span>
-          LGPD ativa: sessão anonimizada como <code>{currentStudent.uuid}</code>
+          LGPD ativa: sessão anonimizada como <code>{actorUuid}</code>
         </span>
       </div>
 
@@ -167,7 +195,7 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
               {m.role === 'tutor' && (
                 <div className="text-[10px] font-bold text-indigo-700 mb-1 flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  <span>{activePersona.name}</span>
+                  <span>{m.personaName ?? activePersona.name}</span>
                 </div>
               )}
               {m.text}

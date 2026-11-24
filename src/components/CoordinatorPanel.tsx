@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Eye,
   EyeOff,
@@ -28,6 +28,10 @@ export const CoordinatorPanel: React.FC = () => {
   // BYOK state
   const [apiKeyDraft, setApiKeyDraft] = useState(state.geminiApiKey);
   const [showKey, setShowKey] = useState(false);
+
+  useEffect(() => {
+    setApiKeyDraft(state.geminiApiKey);
+  }, [state.geminiApiKey]);
 
   // Audit filter
   const [auditFilter, setAuditFilter] = useState('');

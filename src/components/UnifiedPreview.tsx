@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -28,11 +28,13 @@ function evaluateRule(rule: LogicRule, rawVal: string): boolean {
     case 'igual':
       return val.toLowerCase() === target.toLowerCase();
     case 'maior_que': {
+      if (val === '' || target === '') return false;
       const a = Number(val);
       const b = Number(target);
       return !Number.isNaN(a) && !Number.isNaN(b) && a > b;
     }
     case 'menor_que': {
+      if (val === '' || target === '') return false;
       const a = Number(val);
       const b = Number(target);
       return !Number.isNaN(a) && !Number.isNaN(b) && a < b;
@@ -65,6 +67,43 @@ export const UnifiedPreview: React.FC<UnifiedPreviewProps> = ({ demand, compact 
     { role: 'bot' | 'user'; text: string; mode?: string }[]
   >([{ role: 'bot', text: ai.greeting }]);
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    setFormValues((prev) => {
+      let changed = false;
+      const next: Record<string, string> = {};
+      ui.fields.forEach((f) => {
+        if (f.type === 'select') {
+          const opts = f.options ?? [];
+          const existing = prev[f.id];
+          if (existing !== undefined && opts.includes(existing)) {
+            next[f.id] = existing;
+          } else {
+            next[f.id] = opts[0] ?? '';
+            if (prev[f.id] !== next[f.id]) changed = true;
+          }
+        } else if (prev[f.id] !== undefined) {
+          next[f.id] = prev[f.id];
+        } else {
+          next[f.id] = '';
+          changed = true;
+        }
+      });
+      if (!changed && Object.keys(prev).length === Object.keys(next).length) {
+        return prev;
+      }
+      return next;
+    });
+  }, [ui.fields]);
+
+  useEffect(() => {
+    setChatMessages((prev) => {
+      if (prev.length > 0 && prev[0].role === 'bot' && !prev[0].mode && prev[0].text !== ai.greeting) {
+        return [{ ...prev[0], text: ai.greeting }, ...prev.slice(1)];
+      }
+      return prev;
+    });
+  }, [ai.greeting]);
 
   const handleRunLogic = (e: React.FormEvent) => {
     e.preventDefault();
