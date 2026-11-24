@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
+  ArrowRight,
   Bot,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Hand,
   Layers,
+  PanelBottom,
+  PanelLeft,
+  PanelTop,
   Plus,
   Presentation,
   Save,
@@ -22,7 +28,16 @@ import {
   StageKey,
   UiArtifact,
   UiField,
+  UiInfoCard,
+  UiNavigationStyle,
+  UiScreen,
 } from '../types';
+import {
+  createEmptyScreen,
+  getAllUiFields,
+  getUiScreens,
+  syncUiWithScreens,
+} from '../utils/uiScreens';
 import { PixelAvatar } from './PixelAvatar';
 import { SocraticTutorDrawer } from './SocraticTutorDrawer';
 import { UnifiedPreview } from './UnifiedPreview';
@@ -129,10 +144,27 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   const [qaDraft, setQaDraft] = useState<QaArtifact>(
     () => demand?.artifacts.qa ?? { checklist: [], notes: '' }
   );
+  const [selectedScreenId, setSelectedScreenId] = useState<string>(
+    () => getUiScreens(uiDraft)[0].id
+  );
 
   // Help modal input
   const [helpNote, setHelpNote] = useState('');
   const [showHelpBox, setShowHelpBox] = useState(false);
+
+  const screens = getUiScreens(uiDraft);
+  const allUiFields = getAllUiFields(uiDraft);
+  const activeScreenIndex = Math.max(
+    0,
+    screens.findIndex((s) => s.id === selectedScreenId)
+  );
+  const activeScreen = screens[activeScreenIndex] ?? screens[0];
+
+  useEffect(() => {
+    if (!screens.some((s) => s.id === selectedScreenId)) {
+      setSelectedScreenId(screens[0].id);
+    }
+  }, [screens, selectedScreenId]);
 
   useEffect(() => {
     if (demand?.artifacts.ui) setUiDraft(demand.artifacts.ui);
@@ -187,6 +219,49 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   };
 
   // UI Workbench helpers
+  const updateScreens = (updater: (prevScreens: UiScreen[]) => UiScreen[]) => {
+    setUiDraft((prev) => syncUiWithScreens(prev, updater(getUiScreens(prev))));
+  };
+
+  const updateActiveScreen = (patch: Partial<UiScreen>) => {
+    const targetId = activeScreen.id;
+    updateScreens((prevScreens) =>
+      prevScreens.map((scr) => (scr.id === targetId ? { ...scr, ...patch } : scr))
+    );
+  };
+
+  const handleAddScreen = () => {
+    const nextScreen = createEmptyScreen(screens.length + 1);
+    updateScreens((prevScreens) => [...prevScreens, nextScreen]);
+    setSelectedScreenId(nextScreen.id);
+  };
+
+  const handleMoveScreen = (delta: -1 | 1) => {
+    const targetIdx = activeScreenIndex + delta;
+    if (targetIdx < 0 || targetIdx >= screens.length) return;
+    updateScreens((prevScreens) => {
+      const next = [...prevScreens];
+      const [moved] = next.splice(activeScreenIndex, 1);
+      next.splice(targetIdx, 0, moved);
+      return next;
+    });
+  };
+
+  const handleDeleteScreen = () => {
+    if (screens.length <= 1) return;
+    const deletedId = activeScreen.id;
+    const remaining = screens.filter((s) => s.id !== deletedId);
+    const nextSelected = remaining[Math.max(0, activeScreenIndex - 1)]?.id ?? remaining[0].id;
+    updateScreens((prevScreens) =>
+      prevScreens
+        .filter((s) => s.id !== deletedId)
+        .map((s) =>
+          s.ctaTargetScreenId === deletedId ? { ...s, ctaTargetScreenId: undefined } : s
+        )
+    );
+    setSelectedScreenId(nextSelected);
+  };
+
   const addUiField = () => {
     const newField: UiField = {
       id: `campo_${Date.now().toString(36)}`,
@@ -194,12 +269,22 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
       type: 'text',
       placeholder: 'Digite aqui...',
     };
-    setUiDraft((prev) => ({ ...prev, fields: [...prev.fields, newField] }));
+    updateActiveScreen({ fields: [...activeScreen.fields, newField] });
+  };
+
+  const addUiInfoCard = () => {
+    const newCard: UiInfoCard = {
+      id: `card_${Date.now().toString(36)}`,
+      title: 'Novo Cartão Informativo',
+      description: 'Descreva uma orientação útil para o cidadão.',
+      icon: 'Info',
+    };
+    updateActiveScreen({ infoCards: [...activeScreen.infoCards, newCard] });
   };
 
   // Logic Workbench helpers
   const addLogicRule = () => {
-    const firstFieldId = uiDraft.fields[0]?.id ?? 'campo';
+    const firstFieldId = allUiFields[0]?.id ?? 'campo';
     const newRule: LogicRule = {
       id: `rule_${Date.now().toString(36)}`,
       fieldId: firstFieldId,
@@ -328,7 +413,10 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
       {/* Optional Full Unified Preview Panel */}
       {showUnifiedModal && (
         <div className="space-y-2">
-          <UnifiedPreview demand={previewDemandSnapshot} />
+          <UnifiedPreview
+            demand={previewDemandSnapshot}
+            preferredScreenId={activeStage === 'UI_UX' ? selectedScreenId : undefined}
+          />
         </div>
       )}
 
@@ -418,7 +506,8 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
 
           {/* BANCADA 1: UI_UX */}
           {activeStage === 'UI_UX' && (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* App-level Identity & Navigation Style */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="ui-app-title" className="block text-xs font-semibold text-slate-700 mb-1">
@@ -433,22 +522,44 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="ui-cta-label" className="block text-xs font-semibold text-slate-700 mb-1">
-                    Texto do Botão Principal (CTA)
-                  </label>
-                  <input
-                    id="ui-cta-label"
-                    name="ctaLabel"
-                    value={uiDraft.ctaLabel}
-                    onChange={(e) => setUiDraft({ ...uiDraft, ctaLabel: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
-                  />
+                  <span className="block text-xs font-semibold text-slate-700 mb-1">
+                    Estilo de Navegação das Telas
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { id: 'tabs', label: 'Abas Topo', icon: PanelTop },
+                        { id: 'bottom', label: 'Barra Inf.', icon: PanelBottom },
+                        { id: 'sidebar', label: 'Menu Lat.', icon: PanelLeft },
+                      ] as const
+                    ).map((opt) => {
+                      const Icon = opt.icon;
+                      const active = (uiDraft.navigationStyle ?? 'tabs') === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() =>
+                            setUiDraft({ ...uiDraft, navigationStyle: opt.id as UiNavigationStyle })
+                          }
+                          className={`px-2 py-2 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition ${
+                            active
+                              ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label htmlFor="ui-app-subtitle" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Subtítulo explicativo para o cidadão
+                  Subtítulo Geral do Aplicativo
                 </label>
                 <input
                   id="ui-app-subtitle"
@@ -494,99 +605,376 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                 </div>
               </div>
 
-              {/* Fields Builder */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">Campos do Formulário</span>
+              {/* Multi-Screen Manager Strip */}
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-slate-900">
+                      Telas do Aplicativo ({screens.length})
+                    </span>
+                    <p className="text-[11px] text-slate-500">
+                      Crie várias telas para separar cadastro, consulta, orientações ou resultados.
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={addUiField}
-                    className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    onClick={handleAddScreen}
+                    className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Adicionar Campo</span>
+                    <span>Nova Tela</span>
                   </button>
                 </div>
 
-                {uiDraft.fields.map((field, idx) => (
-                  <div
-                    key={field.id}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
-                  >
-                    <input
-                      id={`ui-field-label-${field.id}`}
-                      name={`fieldLabel_${field.id}`}
-                      aria-label={`Rótulo do campo ${idx + 1}`}
-                      value={field.label}
-                      onChange={(e) => {
-                        const next = [...uiDraft.fields];
-                        next[idx] = { ...field, label: e.target.value };
-                        setUiDraft({ ...uiDraft, fields: next });
-                      }}
-                      placeholder="Rótulo do campo"
-                      className="sm:col-span-5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                    />
-                    <select
-                      id={`ui-field-type-${field.id}`}
-                      name={`fieldType_${field.id}`}
-                      aria-label={`Tipo do campo ${field.label || idx + 1}`}
-                      value={field.type}
-                      onChange={(e) => {
-                        const next = [...uiDraft.fields];
-                        next[idx] = {
-                          ...field,
-                          type: e.target.value as UiField['type'],
-                          options: e.target.value === 'select' ? field.options ?? ['Opção A', 'Opção B'] : undefined,
-                        };
-                        setUiDraft({ ...uiDraft, fields: next });
-                      }}
-                      className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-                    >
-                      <option value="text">Texto</option>
-                      <option value="number">Número</option>
-                      <option value="select">Lista (Select)</option>
-                    </select>
-                    {field.type === 'select' ? (
-                      <SelectOptionsInput
-                        id={`ui-field-options-${field.id}`}
-                        ariaLabel={`Opções do campo ${field.label || idx + 1}`}
-                        options={field.options ?? []}
-                        onChange={(nextOptions) => {
-                          const next = [...uiDraft.fields];
-                          next[idx] = { ...field, options: nextOptions };
-                          setUiDraft({ ...uiDraft, fields: next });
-                        }}
-                      />
-                    ) : (
-                      <input
-                        id={`ui-field-placeholder-${field.id}`}
-                        name={`fieldPlaceholder_${field.id}`}
-                        aria-label={`Placeholder do campo ${field.label || idx + 1}`}
-                        value={field.placeholder ?? ''}
-                        onChange={(e) => {
-                          const next = [...uiDraft.fields];
-                          next[idx] = { ...field, placeholder: e.target.value };
-                          setUiDraft({ ...uiDraft, fields: next });
-                        }}
-                        placeholder="Exemplo / dica"
-                        className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                      />
-                    )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {screens.map((scr, idx) => {
+                    const isSelected = scr.id === activeScreen.id;
+                    return (
+                      <button
+                        key={scr.id}
+                        type="button"
+                        onClick={() => setSelectedScreenId(scr.id)}
+                        className={`px-3 py-2 rounded-xl border text-left transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                            : 'bg-white text-slate-800 border-slate-200 hover:border-sky-300'
+                        }`}
+                      >
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <span>
+                            {idx + 1}. {scr.name}
+                          </span>
+                        </div>
+                        <div
+                          className={`text-[10px] ${
+                            isSelected ? 'text-slate-300' : 'text-slate-500'
+                          }`}
+                        >
+                          {scr.fields.length} {scr.fields.length === 1 ? 'campo' : 'campos'} ·{' '}
+                          {scr.infoCards.length} {scr.infoCards.length === 1 ? 'cartão' : 'cartões'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Screen Editor */}
+              <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/30 p-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-sky-200/70">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                      Editando Tela {activeScreenIndex + 1} de {screens.length}
+                    </span>
+                    <h4 className="font-display font-bold text-sm text-slate-900">
+                      {activeScreen.name}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      aria-label={`Remover campo ${field.label || idx + 1}`}
-                      onClick={() =>
-                        setUiDraft({
-                          ...uiDraft,
-                          fields: uiDraft.fields.filter((f) => f.id !== field.id),
-                        })
-                      }
-                      className="sm:col-span-1 p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 flex justify-center cursor-pointer"
+                      onClick={() => handleMoveScreen(-1)}
+                      disabled={activeScreenIndex === 0}
+                      title="Mover tela para antes"
+                      aria-label="Mover tela para antes"
+                      className="p-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveScreen(1)}
+                      disabled={activeScreenIndex === screens.length - 1}
+                      title="Mover tela para depois"
+                      aria-label="Mover tela para depois"
+                      className="p-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteScreen}
+                      disabled={screens.length <= 1}
+                      className="px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-40 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir Tela</span>
                     </button>
                   </div>
-                ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="ui-screen-name"
+                      className="block text-xs font-semibold text-slate-700 mb-1"
+                    >
+                      Nome no Menu / Aba
+                    </label>
+                    <input
+                      id="ui-screen-name"
+                      name="screenName"
+                      value={activeScreen.name}
+                      onChange={(e) => updateActiveScreen({ name: e.target.value })}
+                      placeholder="Ex.: Triagem, Unidades, Dicas"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="ui-screen-title"
+                      className="block text-xs font-semibold text-slate-700 mb-1"
+                    >
+                      Título da Tela
+                    </label>
+                    <input
+                      id="ui-screen-title"
+                      name="screenTitle"
+                      value={activeScreen.title}
+                      onChange={(e) => updateActiveScreen({ title: e.target.value })}
+                      placeholder="Ex.: Pré-acolhimento Rápido"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="ui-screen-subtitle"
+                    className="block text-xs font-semibold text-slate-700 mb-1"
+                  >
+                    Descrição da Tela
+                  </label>
+                  <input
+                    id="ui-screen-subtitle"
+                    name="screenSubtitle"
+                    value={activeScreen.subtitle}
+                    onChange={(e) => updateActiveScreen({ subtitle: e.target.value })}
+                    placeholder="Explique o que o cidadão encontra nesta tela..."
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="ui-cta-label"
+                      className="block text-xs font-semibold text-slate-700 mb-1"
+                    >
+                      Texto do Botão (CTA)
+                    </label>
+                    <input
+                      id="ui-cta-label"
+                      name="ctaLabel"
+                      value={activeScreen.ctaLabel ?? ''}
+                      onChange={(e) => updateActiveScreen({ ctaLabel: e.target.value })}
+                      placeholder="Ex.: Enviar ou Ir para próxima tela"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="ui-cta-target"
+                      className="block text-xs font-semibold text-slate-700 mb-1"
+                    >
+                      Ação do Botão
+                    </label>
+                    <select
+                      id="ui-cta-target"
+                      name="ctaTargetScreenId"
+                      value={activeScreen.ctaTargetScreenId ?? ''}
+                      onChange={(e) =>
+                        updateActiveScreen({
+                          ctaTargetScreenId: e.target.value || undefined,
+                        })
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+                    >
+                      <option value="">Executar Regras / Ação da Tela</option>
+                      {screens
+                        .filter((s) => s.id !== activeScreen.id)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            Ir para tela: {s.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Info Cards Builder for Active Screen */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      Cartões Informativos desta Tela
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addUiInfoCard}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-sky-200 hover:bg-sky-50 text-sky-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar Cartão</span>
+                    </button>
+                  </div>
+
+                  {activeScreen.infoCards.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic">
+                      Nenhum cartão informativo nesta tela.
+                    </p>
+                  ) : (
+                    activeScreen.infoCards.map((card, idx) => (
+                      <div
+                        key={card.id}
+                        className="p-2.5 rounded-xl bg-white border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
+                      >
+                        <input
+                          id={`ui-card-title-${card.id}`}
+                          name={`cardTitle_${card.id}`}
+                          aria-label={`Título do cartão ${idx + 1}`}
+                          value={card.title}
+                          onChange={(e) => {
+                            const next = [...activeScreen.infoCards];
+                            next[idx] = { ...card, title: e.target.value };
+                            updateActiveScreen({ infoCards: next });
+                          }}
+                          placeholder="Título do cartão"
+                          className="sm:col-span-4 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold"
+                        />
+                        <input
+                          id={`ui-card-desc-${card.id}`}
+                          name={`cardDesc_${card.id}`}
+                          aria-label={`Descrição do cartão ${idx + 1}`}
+                          value={card.description}
+                          onChange={(e) => {
+                            const next = [...activeScreen.infoCards];
+                            next[idx] = { ...card, description: e.target.value };
+                            updateActiveScreen({ infoCards: next });
+                          }}
+                          placeholder="Descrição do cartão"
+                          className="sm:col-span-7 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remover cartão ${card.title || idx + 1}`}
+                          onClick={() =>
+                            updateActiveScreen({
+                              infoCards: activeScreen.infoCards.filter((c) => c.id !== card.id),
+                            })
+                          }
+                          className="sm:col-span-1 p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 flex justify-center cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Fields Builder for Active Screen */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      Campos do Formulário desta Tela
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addUiField}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-sky-200 hover:bg-sky-50 text-sky-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar Campo</span>
+                    </button>
+                  </div>
+
+                  {activeScreen.fields.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic">
+                      Esta tela não possui campos de formulário (ideal para telas informativas ou de navegação).
+                    </p>
+                  ) : (
+                    activeScreen.fields.map((field, idx) => (
+                      <div
+                        key={field.id}
+                        className="p-3 rounded-xl bg-white border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
+                      >
+                        <input
+                          id={`ui-field-label-${field.id}`}
+                          name={`fieldLabel_${field.id}`}
+                          aria-label={`Rótulo do campo ${idx + 1}`}
+                          value={field.label}
+                          onChange={(e) => {
+                            const next = [...activeScreen.fields];
+                            next[idx] = { ...field, label: e.target.value };
+                            updateActiveScreen({ fields: next });
+                          }}
+                          placeholder="Rótulo do campo"
+                          className="sm:col-span-5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                        />
+                        <select
+                          id={`ui-field-type-${field.id}`}
+                          name={`fieldType_${field.id}`}
+                          aria-label={`Tipo do campo ${field.label || idx + 1}`}
+                          value={field.type}
+                          onChange={(e) => {
+                            const next = [...activeScreen.fields];
+                            next[idx] = {
+                              ...field,
+                              type: e.target.value as UiField['type'],
+                              options:
+                                e.target.value === 'select'
+                                  ? field.options ?? ['Opção A', 'Opção B']
+                                  : undefined,
+                            };
+                            updateActiveScreen({ fields: next });
+                          }}
+                          className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
+                        >
+                          <option value="text">Texto</option>
+                          <option value="number">Número</option>
+                          <option value="select">Lista (Select)</option>
+                        </select>
+                        {field.type === 'select' ? (
+                          <SelectOptionsInput
+                            id={`ui-field-options-${field.id}`}
+                            ariaLabel={`Opções do campo ${field.label || idx + 1}`}
+                            options={field.options ?? []}
+                            onChange={(nextOptions) => {
+                              const next = [...activeScreen.fields];
+                              next[idx] = { ...field, options: nextOptions };
+                              updateActiveScreen({ fields: next });
+                            }}
+                          />
+                        ) : (
+                          <input
+                            id={`ui-field-placeholder-${field.id}`}
+                            name={`fieldPlaceholder_${field.id}`}
+                            aria-label={`Placeholder do campo ${field.label || idx + 1}`}
+                            value={field.placeholder ?? ''}
+                            onChange={(e) => {
+                              const next = [...activeScreen.fields];
+                              next[idx] = { ...field, placeholder: e.target.value };
+                              updateActiveScreen({ fields: next });
+                            }}
+                            placeholder="Exemplo / dica"
+                            className="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          aria-label={`Remover campo ${field.label || idx + 1}`}
+                          onClick={() =>
+                            updateActiveScreen({
+                              fields: activeScreen.fields.filter((f) => f.id !== field.id),
+                            })
+                          }
+                          className="sm:col-span-1 p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 flex justify-center cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -627,9 +1015,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       }}
                       className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
                     >
-                      {uiDraft.fields.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.label}
+                      {!allUiFields.some((f) => f.id === rule.fieldId) && (
+                        <option value={rule.fieldId}>Campo: {rule.fieldId}</option>
+                      )}
+                      {allUiFields.map((f) => (
+                        <option key={`${f.screenId}-${f.id}`} value={f.id}>
+                          {screens.length > 1 ? `${f.screenName} · ${f.label}` : f.label}
                         </option>
                       ))}
                     </select>
@@ -730,6 +1121,37 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                     />
                   </div>
+
+                  {screens.length > 1 && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
+                      <span className="font-semibold text-violet-800 flex items-center gap-1">
+                        <ArrowRight className="w-3 h-3" />
+                        Navegar ao ativar:
+                      </span>
+                      <select
+                        id={`logic-target-${rule.id}`}
+                        name={`logicTarget_${rule.id}`}
+                        aria-label={`Tela de destino da regra ${idx + 1}`}
+                        value={rule.targetScreenId ?? ''}
+                        onChange={(e) => {
+                          const next = [...logicDraft.rules];
+                          next[idx] = {
+                            ...rule,
+                            targetScreenId: e.target.value || undefined,
+                          };
+                          setLogicDraft({ ...logicDraft, rules: next });
+                        }}
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                      >
+                        <option value="">Permanecer na tela atual</option>
+                        {screens.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            Ir para tela: {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -1042,7 +1464,11 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                   Expandir
                 </button>
               </div>
-              <UnifiedPreview demand={previewDemandSnapshot} compact />
+              <UnifiedPreview
+                demand={previewDemandSnapshot}
+                preferredScreenId={activeStage === 'UI_UX' ? selectedScreenId : undefined}
+                compact
+              />
             </div>
           )}
         </div>

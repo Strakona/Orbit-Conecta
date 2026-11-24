@@ -401,6 +401,7 @@ export const INITIAL_DEMANDS: Demand[] = [
         appSubtitle: 'Pré-acolhimento digital rápido para Unidades Básicas de Saúde',
         primaryColor: '#0284C7',
         accentColor: '#10B981',
+        navigationStyle: 'tabs',
         ctaLabel: 'Verificar Orientação de Acolhimento',
         fields: [
           { id: 'sintoma', label: 'Principal sintoma', type: 'text', placeholder: 'Ex.: febre, falta de ar, dor de garganta' },
@@ -414,16 +415,94 @@ export const INITIAL_DEMANDS: Demand[] = [
         ],
         infoCards: [
           {
-            id: 'card-1',
-            title: 'Documentos necessários',
-            description: 'Leve Cartão SUS, documento com foto e carteira de vacinação.',
-            icon: 'FileText',
-          },
-          {
             id: 'card-2',
             title: 'Emergência 192',
             description: 'Em caso de dor no peito ou falta de ar intensa, procure a UPA ou ligue 192.',
             icon: 'AlertTriangle',
+          },
+        ],
+        screens: [
+          {
+            id: 'scr-ubs-triagem',
+            name: 'Triagem',
+            title: 'Pré-acolhimento Rápido',
+            subtitle: 'Informe os sintomas principais para receber a orientação inicial da rede municipal.',
+            fields: [
+              { id: 'sintoma', label: 'Principal sintoma', type: 'text', placeholder: 'Ex.: febre, falta de ar, dor de garganta' },
+              { id: 'idade', label: 'Idade do paciente', type: 'number', placeholder: 'Ex.: 12' },
+              {
+                id: 'unidade',
+                label: 'UBS de referência',
+                type: 'select',
+                options: ['UBS Zona 01', 'UBS Cianortinho', 'UBS Seis Conjuntos', 'UBS Vidigal'],
+              },
+            ],
+            infoCards: [
+              {
+                id: 'card-2',
+                title: 'Emergência 192',
+                description: 'Em caso de dor no peito ou falta de ar intensa, procure a UPA ou ligue 192.',
+                icon: 'AlertTriangle',
+              },
+            ],
+            ctaLabel: 'Verificar Orientação de Acolhimento',
+          },
+          {
+            id: 'scr-ubs-unidades',
+            name: 'Unidades UBS',
+            title: 'Unidades Básicas de Saúde',
+            subtitle: 'Confira os documentos necessários e os horários de atendimento das UBSs em Cianorte.',
+            fields: [],
+            infoCards: [
+              {
+                id: 'card-1',
+                title: 'Documentos necessários',
+                description: 'Leve Cartão SUS, documento com foto e carteira de vacinação.',
+                icon: 'FileText',
+              },
+              {
+                id: 'card-ubs-1',
+                title: 'UBS Zona 01 e Cianortinho',
+                description: 'Atendimento de segunda a sexta-feira, das 07h30 às 17h00.',
+                icon: 'MapPin',
+              },
+              {
+                id: 'card-ubs-2',
+                title: 'UBS Seis Conjuntos e Vidigal',
+                description: 'Atendimento de segunda a sexta-feira, das 07h30 às 17h00.',
+                icon: 'MapPin',
+              },
+            ],
+            ctaLabel: 'Ir para Triagem',
+            ctaTargetScreenId: 'scr-ubs-triagem',
+          },
+          {
+            id: 'scr-ubs-vacinas',
+            name: 'Vacinação',
+            title: 'Sala de Vacinas Municipal',
+            subtitle: 'Selecione a faixa etária para consultar orientações e horários das salas de vacinação.',
+            fields: [
+              {
+                id: 'faixa_etaria',
+                label: 'Faixa etária',
+                type: 'select',
+                options: [
+                  'Infantil (0–11 anos)',
+                  'Adolescente (12–17 anos)',
+                  'Adulto (18–59 anos)',
+                  'Idoso (60+)',
+                ],
+              },
+            ],
+            infoCards: [
+              {
+                id: 'card-vac-1',
+                title: 'Horário da Sala de Vacinas',
+                description: 'Funcionamento de segunda a sexta-feira, das 08h00 às 16h30 nas UBSs municipais.',
+                icon: 'Clock',
+              },
+            ],
+            ctaLabel: 'Consultar Orientação',
           },
         ],
       },
@@ -549,6 +628,7 @@ export const INITIAL_DEMANDS: Demand[] = [
         appSubtitle: 'Descubra o dia da coleta seletiva e o ponto de descarte certo no seu bairro',
         primaryColor: '#059669',
         accentColor: '#0EA5E9',
+        navigationStyle: 'bottom',
         ctaLabel: 'Consultar Coleta do Meu Bairro',
         fields: [
           {
@@ -566,11 +646,77 @@ export const INITIAL_DEMANDS: Demand[] = [
             description: 'Enxágue rapidamente embalagens de leite e potes antes de colocar no saco reciclável.',
             icon: 'Sparkles',
           },
+        ],
+        screens: [
           {
-            id: 'eco-2',
-            title: 'Ecoponto Municipal',
-            description: 'Pilhas, baterias e eletrônicos devem ir aos pontos de entrega voluntária da prefeitura.',
-            icon: 'MapPin',
+            id: 'scr-eco-coleta',
+            name: 'Coleta',
+            title: 'Coleta Seletiva por Bairro',
+            subtitle: 'Informe seu bairro e o material para saber o dia da coleta ou o destino correto.',
+            fields: [
+              {
+                id: 'bairro',
+                label: 'Seu bairro',
+                type: 'select',
+                options: ['Zona 01 (Centro)', 'Cianortinho', 'Zona 04', 'Seis Conjuntos', 'Vila Operária'],
+              },
+              { id: 'material', label: 'O que você quer descartar?', type: 'text', placeholder: 'Ex.: papelão, pilhas, garrafa PET' },
+            ],
+            infoCards: [
+              {
+                id: 'eco-1',
+                title: 'Lixo Seco Limpo',
+                description: 'Enxágue rapidamente embalagens de leite e potes antes de colocar no saco reciclável.',
+                icon: 'Sparkles',
+              },
+            ],
+            ctaLabel: 'Consultar Coleta do Meu Bairro',
+          },
+          {
+            id: 'scr-eco-ecopontos',
+            name: 'Ecopontos',
+            title: 'Ecopontos Municipais',
+            subtitle: 'Locais de entrega voluntária para pilhas, baterias, lâmpadas e eletrônicos.',
+            fields: [],
+            infoCards: [
+              {
+                id: 'eco-2',
+                title: 'Ecoponto Municipal',
+                description: 'Paço Municipal de Cianorte — entrega voluntária de pilhas, baterias e eletrônicos.',
+                icon: 'MapPin',
+              },
+              {
+                id: 'eco-3',
+                title: 'Escolas Parceiras SMED',
+                description: 'Pontos de coleta educativa disponíveis nas escolas municipais participantes.',
+                icon: 'MapPin',
+              },
+            ],
+            ctaLabel: 'Voltar à Consulta',
+            ctaTargetScreenId: 'scr-eco-coleta',
+          },
+          {
+            id: 'scr-eco-guia',
+            name: 'Guia Recicla',
+            title: 'Como Separar Materiais',
+            subtitle: 'Aprenda a diferenciar resíduos recicláveis secos de rejeitos e orgânicos.',
+            fields: [],
+            infoCards: [
+              {
+                id: 'eco-guia-1',
+                title: 'Lixo Seco (Reciclável)',
+                description: 'Papel, plástico, metal e vidro embalado com segurança em caixa ou jornal.',
+                icon: 'Recycle',
+              },
+              {
+                id: 'eco-guia-2',
+                title: 'Orgânico e Rejeito',
+                description: 'Restos de alimentos, guardanapos sujos e embalagens engorduradas.',
+                icon: 'Info',
+              },
+            ],
+            ctaLabel: 'Consultar Meu Bairro',
+            ctaTargetScreenId: 'scr-eco-coleta',
           },
         ],
       },
@@ -584,6 +730,7 @@ export const INITIAL_DEMANDS: Demand[] = [
             resultTitle: 'Descarte Especial — Ecoponto',
             resultMessage: 'Pilhas e baterias não vão na coleta comum! Entregue no Ecoponto do Paço Municipal ou escolas parceiras.',
             severity: 'warning',
+            targetScreenId: 'scr-eco-ecopontos',
           },
           {
             id: 'r-eco-2',
@@ -679,6 +826,7 @@ export const INITIAL_DEMANDS: Demand[] = [
         appSubtitle: 'Encontre seu próximo livro favorito nas bibliotecas das escolas municipais',
         primaryColor: '#4F46E5',
         accentColor: '#F59E0B',
+        navigationStyle: 'sidebar',
         ctaLabel: 'Buscar Recomendação de Leitura',
         fields: [
           {
@@ -689,18 +837,47 @@ export const INITIAL_DEMANDS: Demand[] = [
           },
           { id: 'idade', label: 'Sua idade', type: 'number', placeholder: 'Ex.: 10' },
         ],
-        infoCards: [
+        infoCards: [],
+        screens: [
           {
-            id: 'lib-1',
-            title: 'Prazo de Empréstimo',
-            description: 'Você pode levar até 2 livros por 7 dias, com renovação gratuita na biblioteca.',
-            icon: 'Clock',
+            id: 'scr-lib-busca',
+            name: 'Catálogo',
+            title: 'Descubra sua Próxima Leitura',
+            subtitle: 'Escolha seu tema favorito e idade para receber uma indicação das estantes escolares.',
+            fields: [
+              {
+                id: 'tema',
+                label: 'Tema favorito',
+                type: 'select',
+                options: ['Aventura e Mistério', 'Ciência e Espaço', 'Histórias do Paraná', 'HQ e Quadrinhos'],
+              },
+              { id: 'idade', label: 'Sua idade', type: 'number', placeholder: 'Ex.: 10' },
+            ],
+            infoCards: [],
+            ctaLabel: 'Buscar Recomendação de Leitura',
           },
           {
-            id: 'lib-2',
-            title: 'Clube de Leitura CEMI 2',
-            description: 'Participe das rodas de leitura toda sexta-feira no contraturno.',
-            icon: 'BookOpen',
+            id: 'scr-lib-clube',
+            name: 'Regras & Clube',
+            title: 'Empréstimos & Clube de Leitura',
+            subtitle: 'Veja como funciona o empréstimo de livros e os encontros semanais do clube.',
+            fields: [],
+            infoCards: [
+              {
+                id: 'lib-1',
+                title: 'Prazo de Empréstimo',
+                description: 'Você pode levar até 2 livros por 7 dias, com renovação gratuita na biblioteca.',
+                icon: 'Clock',
+              },
+              {
+                id: 'lib-2',
+                title: 'Clube de Leitura CEMI 2',
+                description: 'Participe das rodas de leitura toda sexta-feira no contraturno.',
+                icon: 'BookOpen',
+              },
+            ],
+            ctaLabel: 'Voltar ao Catálogo',
+            ctaTargetScreenId: 'scr-lib-busca',
           },
         ],
       },
@@ -802,6 +979,7 @@ export const INITIAL_DEMANDS: Demand[] = [
         appSubtitle: 'Diagnóstico cidadão e educação no trânsito em frente às escolas',
         primaryColor: '#D97706',
         accentColor: '#0F172A',
+        navigationStyle: 'tabs',
         ctaLabel: 'Avaliar Segurança da Travessia',
         fields: [
           { id: 'escola', label: 'Escola Municipal', type: 'text', placeholder: 'Ex.: Escola Municipal Liomar Gomes' },
@@ -813,6 +991,50 @@ export const INITIAL_DEMANDS: Demand[] = [
             title: 'Limite Zona Escolar',
             description: 'Em área escolar, a velocidade segura recomendada é de até 30 km/h.',
             icon: 'ShieldCheck',
+          },
+        ],
+        screens: [
+          {
+            id: 'scr-tr-diag',
+            name: 'Diagnóstico',
+            title: 'Avaliação da Travessia Escolar',
+            subtitle: 'Registre a escola e a velocidade estimada na via para verificar alertas de segurança.',
+            fields: [
+              { id: 'escola', label: 'Escola Municipal', type: 'text', placeholder: 'Ex.: Escola Municipal Liomar Gomes' },
+              { id: 'velocidade', label: 'Velocidade média estimada (km/h)', type: 'number', placeholder: 'Ex.: 40' },
+            ],
+            infoCards: [
+              {
+                id: 'tr-1',
+                title: 'Limite Zona Escolar',
+                description: 'Em área escolar, a velocidade segura recomendada é de até 30 km/h.',
+                icon: 'ShieldCheck',
+              },
+            ],
+            ctaLabel: 'Avaliar Segurança da Travessia',
+          },
+          {
+            id: 'scr-tr-dicas',
+            name: 'Travessia Segura',
+            title: 'Boas Práticas na Faixa',
+            subtitle: 'Orientações rápidas para estudantes, famílias e motoristas nos horários de entrada e saída.',
+            fields: [],
+            infoCards: [
+              {
+                id: 'tr-dica-1',
+                title: 'Passo a Passo na Faixa',
+                description: 'Pare na calçada, faça contato visual com o motorista e sinalize com o braço antes de atravessar.',
+                icon: 'ShieldCheck',
+              },
+              {
+                id: 'tr-dica-2',
+                title: 'Sinalização Escolar',
+                description: 'Respeite o limite de 30 km/h e siga sempre as orientações dos agentes de trânsito.',
+                icon: 'AlertTriangle',
+              },
+            ],
+            ctaLabel: 'Fazer Novo Diagnóstico',
+            ctaTargetScreenId: 'scr-tr-diag',
           },
         ],
       },

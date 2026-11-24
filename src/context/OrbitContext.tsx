@@ -36,18 +36,59 @@ const createInitialState = (): OrbitState => ({
   activeTab: 'LAB',
 });
 
+function migrateDemandScreens(demand: Demand): Demand {
+  if (demand.artifacts?.ui?.screens && demand.artifacts.ui.screens.length > 0) {
+    return demand;
+  }
+  const seed = INITIAL_DEMANDS.find((s) => s.id === demand.id);
+  const seedScreens = seed?.artifacts.ui.screens;
+  if (seedScreens && seedScreens.length > 0) {
+    const firstScreen = {
+      ...seedScreens[0],
+      fields: demand.artifacts.ui.fields ?? seedScreens[0].fields,
+      infoCards: demand.artifacts.ui.infoCards ?? seedScreens[0].infoCards,
+      ctaLabel: demand.artifacts.ui.ctaLabel ?? seedScreens[0].ctaLabel,
+    };
+    const nextLogic =
+      demand.id === 'dem-meio-ambiente'
+        ? {
+            ...demand.artifacts.logic,
+            rules: demand.artifacts.logic.rules.map((r) =>
+              r.id === 'r-eco-1' && !r.targetScreenId
+                ? { ...r, targetScreenId: 'scr-eco-ecopontos' }
+                : r,
+            ),
+          }
+        : demand.artifacts.logic;
+    return {
+      ...demand,
+      artifacts: {
+        ...demand.artifacts,
+        ui: {
+          ...demand.artifacts.ui,
+          navigationStyle: demand.artifacts.ui.navigationStyle ?? seed?.artifacts.ui.navigationStyle ?? 'tabs',
+          screens: [firstScreen, ...seedScreens.slice(1)],
+        },
+        logic: nextLogic,
+      },
+    };
+  }
+  return demand;
+}
+
 function loadState(): OrbitState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return createInitialState();
     const parsed = JSON.parse(raw) as Partial<OrbitState>;
     const fallback = createInitialState();
+    const rawDemands = parsed.demands?.length ? parsed.demands : fallback.demands;
     return {
       ...fallback,
       ...parsed,
       turmas: parsed.turmas?.length ? parsed.turmas : fallback.turmas,
       students: parsed.students?.length ? parsed.students : fallback.students,
-      demands: parsed.demands?.length ? parsed.demands : fallback.demands,
+      demands: rawDemands.map(migrateDemandScreens),
       auditLogs: parsed.auditLogs ?? fallback.auditLogs,
     };
   } catch {
@@ -578,12 +619,36 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             appSubtitle: input.description,
             primaryColor: uniquePrimaryColor,
             accentColor: '#10B981',
+            navigationStyle: 'tabs',
             ctaLabel: 'Enviar Consulta',
             fields: [
               { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
             ],
-            infoCards: [
-              { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
+            infoCards: [],
+            screens: [
+              {
+                id: `${id}-scr-1`,
+                name: 'Início',
+                title: input.shortName || input.title,
+                subtitle: input.description,
+                fields: [
+                  { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
+                ],
+                infoCards: [],
+                ctaLabel: 'Enviar Consulta',
+              },
+              {
+                id: `${id}-scr-2`,
+                name: 'Informações',
+                title: `Sobre — ${input.shortName || input.title}`,
+                subtitle: `Orientações e canais oficiais da ${input.secretaria}.`,
+                fields: [],
+                infoCards: [
+                  { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
+                ],
+                ctaLabel: 'Voltar ao Início',
+                ctaTargetScreenId: `${id}-scr-1`,
+              },
             ],
           },
           logic: {

@@ -63,11 +63,26 @@ export interface UiInfoCard {
   icon: string;
 }
 
+export type UiNavigationStyle = 'tabs' | 'bottom' | 'sidebar';
+
+export interface UiScreen {
+  id: string;
+  name: string;
+  title: string;
+  subtitle: string;
+  fields: UiField[];
+  infoCards: UiInfoCard[];
+  ctaLabel?: string;
+  ctaTargetScreenId?: string;
+}
+
 export interface UiArtifact {
   appTitle: string;
   appSubtitle: string;
   primaryColor: string;
   accentColor: string;
+  navigationStyle?: UiNavigationStyle;
+  screens?: UiScreen[];
   fields: UiField[];
   infoCards: UiInfoCard[];
   ctaLabel: string;
@@ -81,6 +96,7 @@ export interface LogicRule {
   resultTitle: string;
   resultMessage: string;
   severity: 'info' | 'success' | 'warning' | 'urgent';
+  targetScreenId?: string;
 }
 
 export interface LogicArtifact {
