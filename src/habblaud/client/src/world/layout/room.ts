@@ -93,13 +93,12 @@ export function layoutProjectRoom(room: RoomInput, theme: RoomTheme): AreaLayout
   const wallItem = (kind: FurnitureKind, cx: number, variant?: string, o: { ly?: number; on?: 'face' | 'south'; order?: number } = {}) => b.wall(kind, mir ? 16 - cx : cx, variant, o);
   const rug = (lx: number, ly: number, w: number, h: number, color: string, seed: number) => b.rug(fx(lx, w), ly, w, h, color, seed);
 
-  // ---- piso: porcelanato claro (o banheiro é que usa azulejo); leve tom do tema dá identidade
-  b.floor('marble', 0, 0, 16, 12, room.seed);
-  area.floorTint = theme.carpet;
-  // tapete na cor do tema sob a ilha (identidade da sala)
-  rug(1.5, 3.25, 7, 5.5, theme.carpet, room.seed);
-  // tapetinho na entrada
-  rug(DOOR_X - 0.25, north ? 9.5 : 2, DOOR_W + 0.5, 1.25, shade(theme.carpet2, -0.1), room.seed + 1);
+  // ---- piso: carpete modular na cor do projeto para destacar das áreas comuns
+  b.floor('carpet', 0, 0, 16, 12, room.seed, theme.carpet, theme.carpet2);
+  // tapete com cor de destaque do projeto sob a ilha
+  rug(1.5, 3.25, 7, 5.5, shade(theme.accent, 0.22), room.seed);
+  // tapetinho na entrada na cor do projeto
+  rug(DOOR_X - 0.25, north ? 9.5 : 2, DOOR_W + 0.5, 1.25, theme.accent, room.seed + 1);
 
   // ---- paredes
   if (north) {
@@ -170,7 +169,7 @@ export function layoutProjectRoom(room: RoomInput, theme: RoomTheme): AreaLayout
     furn('plant_small', 12, 5, pick(PLANTS_SMALL), { order: 0.47 });
   } else {
     // recanto com poltronas e puffs em volta de uma mesa de centro (sem mesa de reunião)
-    rug(9.6, 3.7, 4.8, 4.6, shade(theme.carpet2, 0.25), room.seed + 2);
+    rug(9.6, 3.7, 4.8, 4.6, shade(theme.accent, 0.45), room.seed + 2);
     furn('coffee_table', 10, 5, undefined, { order: 0.45 });
     seat('nook', 'armchair', 9, 5, 'right', undefined, { order: 0.65 }, true);
     seat('nook', 'armchair', 12, 5, 'left', undefined, { order: 0.66 }, true);
@@ -213,7 +212,7 @@ export function layoutProjectRoom(room: RoomInput, theme: RoomTheme): AreaLayout
     switch (style) {
       case 'rest': {
         // canto de descanso: tapete, dois puffs (também servem de lugar extra) e plantas
-        rug(x0 + 0.5, 8.85, 4, 2, shade(theme.carpet, 0.35), room.seed + 3);
+        rug(x0 + 0.5, 8.85, 4, 2, shade(theme.accent, 0.55), room.seed + 3);
         seat('nook', 'beanbag', x0 + 1, 10, 'up', pick(BEANBAGS), { order: o + 0.4 });
         seat('nook', 'beanbag', x0 + 3, 10, 'up', pick(BEANBAGS), { order: o + 0.41 });
         furn('plant_small', x0 + 2, 10, pick(PLANTS_SMALL), { order: o });

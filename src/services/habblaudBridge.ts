@@ -1,4 +1,5 @@
 import { STAGE_META } from '../data/seedData';
+import { PROJECT_THEME_ACCENTS, THEME_COUNT } from '../habblaud/client/src/art/theme';
 import { hash32 } from '../habblaud/shared/hash';
 import type {
   AccountInfo,
@@ -8,9 +9,72 @@ import type {
   RoomInfo,
   TaskItem,
 } from '../habblaud/shared/types';
-import { OrbitState, StageKey } from '../types';
+import { Demand, OrbitState, StageKey } from '../types';
 
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
+
+function parseHexRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function closestThemeIndex(hex: string): number {
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return 0;
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < PROJECT_THEME_ACCENTS.length; i++) {
+    const target = parseHexRgb(PROJECT_THEME_ACCENTS[i]);
+    if (!target) continue;
+    const dr = rgb[0] - target[0];
+    const dg = rgb[1] - target[1];
+    const db = rgb[2] - target[2];
+    const dist = dr * dr + dg * dg + db * db;
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+/**
+ * Resolve um tema de cor único (sem colisões) para cada demanda ativa no mapa 2.5D,
+ * partindo da cor primária configurada no projeto.
+ */
+export function resolveDemandThemeMap(
+  demands: Demand[],
+): Map<string, { themeIndex: number; accent: string }> {
+  const map = new Map<string, { themeIndex: number; accent: string }>();
+  const used = new Set<number>();
+  const activeDemands = demands.filter((d) => d.status !== 'ENTREGUE');
+
+  for (let i = 0; i < activeDemands.length; i++) {
+    const d = activeDemands[i];
+    const preferred = closestThemeIndex(d.artifacts.ui.primaryColor);
+    let chosen = preferred;
+    if (used.size < THEME_COUNT) {
+      for (let offset = 0; offset < THEME_COUNT; offset++) {
+        const candidate = (preferred + offset) % THEME_COUNT;
+        if (!used.has(candidate)) {
+          chosen = candidate;
+          break;
+        }
+      }
+      used.add(chosen);
+    } else {
+      chosen = (preferred + i) % THEME_COUNT;
+    }
+    map.set(d.id, {
+      themeIndex: chosen,
+      accent: PROJECT_THEME_ACCENTS[chosen] ?? '#0284C7',
+    });
+  }
+
+  return map;
+}
 
 const TURMA_COLORS: Record<string, { short: string; color: string }> = {
   'turma-1': { short: 'T1', color: '#38BDF8' },
@@ -44,6 +108,7 @@ let snapshotRev = 1;
 export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
   const now = Date.now();
   const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
+  const themeMap = resolveDemandThemeMap(state.demands);
   const fallbackRoomId = activeDemands[0]?.id ?? 'sala-demandas';
 
   const rooms: RoomInfo[] = activeDemands.map((demand, idx) => ({
@@ -52,6 +117,7 @@ export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
     path: demand.secretaria,
     slot: idx,
     seed: hash32(demand.id),
+    themeIndex: themeMap.get(demand.id)?.themeIndex ?? (idx % THEME_COUNT),
     createdAt: Date.parse(demand.createdAt) || now - 300_000,
     ...(demand.status === 'MODO_TESTE'
       ? {
@@ -72,6 +138,7 @@ export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
       path: 'CEMI 2 / SMED Cianorte',
       slot: 0,
       seed: hash32('sala-demandas'),
+      themeIndex: 0,
       createdAt: now - 300_000,
     });
   }

@@ -19,8 +19,11 @@ export const WALL_FACE_H = TILE * 2;
 export const WALL_CAP_H = 4;
 export const BASEBOARD_H = 3;
 
-/** Cor da tampa (topo da parede), levemente tingida pela cor da parede. */
+/** Cor da tampa (topo da parede), tingida fortemente nas salas de projeto e sutilmente nas áreas comuns. */
 export function capColor(style: WallStyle): string {
+  if (style.accent) {
+    return mix(style.exterior ? '#333b4a' : '#263042', style.accent, 0.58);
+  }
   return mix(style.exterior ? '#4a4f5c' : '#3d4356', style.base, 0.1);
 }
 

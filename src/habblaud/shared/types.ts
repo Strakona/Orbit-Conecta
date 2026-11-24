@@ -204,6 +204,8 @@ export interface RoomInfo {
   slot: number;
   /** Semente para cores/decoração determinísticas. */
   seed: number;
+  /** Índice explícito do tema de cor da sala (evita colisões de hash entre projetos). */
+  themeIndex?: number;
   createdAt: number;
   /** Efeito visual temporário na sala (eventos do GitHub detectados nos transcripts; ver shared/github.ts). */
   effect?: RoomEffect;

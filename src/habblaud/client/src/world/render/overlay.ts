@@ -427,8 +427,11 @@ export class Overlay {
         const w = rect.w * zoom;
         const h = rect.h * zoom;
         if (ax + w > 0 && ax < vw && ay + h > 0 && ay < vh) {
-          this.drawSignText(text, ax, ay, w, h, this.renderer.signIsDark(vis), room?.accounts ?? []);
+          this.drawSignText(text, ax, ay, w, h, this.renderer.signIsDark(vis), room?.accounts ?? [], room?.theme.accent);
           this.place(ax, ay, w, h);
+          if (room?.theme.accent) {
+            this.place(ax, ay - 14, w, 14);
+          }
         }
       }
       if (room ? readable : zoom >= 1.4) continue;
@@ -474,19 +477,44 @@ export class Overlay {
     return n;
   }
 
-  private drawSignText(text: string, x: number, y: number, w: number, h: number, dark: boolean, accounts: string[]): void {
+  private drawSignText(text: string, x: number, y: number, w: number, h: number, dark: boolean, accounts: string[], accent?: string): void {
     const { ctx } = this;
+    const textLeft = accent ? x + 3 : x;
+    const textAvail = accent ? w - 6 : w - 4;
+    if (accent) {
+      ctx.save();
+      // Barra lateral colorida na placa e micro-etiqueta "PROJETO" acima da placa
+      ctx.fillStyle = accent;
+      ctx.fillRect(Math.round(x - 1), Math.round(y), 3, Math.round(h));
+      const tagText = 'PROJETO';
+      ctx.font = BADGE_FONT;
+      const tagW = Math.round(this.measure(BADGE_FONT, tagText) + 8);
+      const tagH = 11;
+      const tagX = Math.round(x + w / 2 - tagW / 2);
+      const tagY = Math.round(y - tagH - 3);
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(tagX, tagY, tagW, tagH, 4);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(15,23,42,0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = luminance(accent) > 0.55 ? '#0f172a' : '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(tagText, tagX + tagW / 2, tagY + tagH / 2 + 0.5);
+      ctx.restore();
+    }
     // encolhe a fonte até 7px; abaixo disso, corta com reticências
     let size = Math.min(18, Math.max(7, Math.floor(h * 0.72)));
     let font = signFont(size);
-    while (size > 7 && this.measure(font, text) > w - 4) {
+    while (size > 7 && this.measure(font, text) > textAvail) {
       size--;
       font = signFont(size);
     }
-    const t = this.fit(font, text, w - 4);
+    const t = this.fit(font, text, textAvail);
     ctx.font = font;
     ctx.textAlign = 'center';
-    const cx = Math.round(x + w / 2);
+    const cx = Math.round(textLeft + textAvail / 2);
     const cy = Math.round(y + h / 2) + 0.5;
     ctx.fillStyle = dark ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)';
     ctx.fillText(t, cx, cy + 1);
@@ -514,46 +542,86 @@ export class Overlay {
     let dots = accounts.filter((a) => this.sim.accounts.has(a));
     let countText = count > 0 ? String(count) : '';
     let cw = countText ? this.measure(LABEL_FONT, countText) + 14 : 0;
+    const tagText = 'PROJETO';
+    const tagW = Math.round(this.measure(BADGE_FONT, tagText) + 8);
+    let showTag = maxW >= 115;
+    let prefixW = showTag ? 9 + tagW + 6 : 19;
+    let rightExtras = 8 + dots.length * 10 + cw;
     // nome cortado para caber na largura da coluna; com pouco espaço, o nome vale mais que a
-    // contagem e as bolinhas; sem espaço nem para 3 letras, pílula compacta (só contagem)
-    let text = this.fit(ROOM_FONT, name, Math.min(180, maxW - (18 + dots.length * 10 + cw)));
+    // contagem e as bolinhas; sem espaço nem para 3 letras, pílula compacta
+    let text = this.fit(ROOM_FONT, name, Math.min(170, maxW - prefixW - rightExtras));
     if (text.length < Math.min(7, name.length)) {
-      const alone = this.fit(ROOM_FONT, name, maxW - 18);
-      if (alone.length >= 4) {
-        text = alone;
+      const aloneWithTag = this.fit(ROOM_FONT, name, maxW - prefixW - 8);
+      if (aloneWithTag.length >= 4 || aloneWithTag === name) {
+        text = aloneWithTag;
         dots = [];
         countText = '';
         cw = 0;
+        rightExtras = 8;
+      } else {
+        showTag = false;
+        prefixW = 19;
+        const alone = this.fit(ROOM_FONT, name, maxW - prefixW - 8);
+        if (alone.length >= 4) {
+          text = alone;
+          dots = [];
+          countText = '';
+          cw = 0;
+          rightExtras = 8;
+        }
       }
     }
-    const extras = 18 + dots.length * 10 + cw;
     // Só vira pílula compacta quando o nome precisou ser cortado (nomes curtos como "app" cabem inteiros).
     const compact = text !== name && text.length < 4;
     const tw = compact ? 0 : this.measure(ROOM_FONT, text);
-    const w = Math.round(compact ? Math.max(12, 10 + cw + dots.length * 10) : tw + extras);
-    const h = 22;
+    const w = Math.min(maxW, Math.round(compact ? Math.max(18, prefixW + cw + dots.length * 10) : prefixW + tw + rightExtras));
+    const h = 24;
     const x = Math.round(cx - w / 2);
     const y = Math.round(cy - h - 4);
     ctx.save();
     ctx.globalAlpha = lit ? 1 : 0.8;
-    ctx.fillStyle = 'rgba(16,20,32,0.28)';
+    ctx.fillStyle = 'rgba(16,20,32,0.34)';
     ctx.beginPath();
     ctx.roundRect(x, y + 2, w, h, 7);
     ctx.fill();
-    ctx.fillStyle = 'rgba(22,27,40,0.9)';
+    ctx.fillStyle = 'rgba(15,23,42,0.94)';
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, 7);
     ctx.fill();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5, 6.5);
+    ctx.stroke();
     ctx.fillStyle = accent;
     ctx.beginPath();
     ctx.roundRect(x, y, 4, h, [7, 0, 0, 7]);
     ctx.fill();
-    let dx = x + 10;
+    if (showTag) {
+      const chipX = x + 8;
+      const chipY = y + 4;
+      const chipH = h - 8;
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(chipX, chipY, tagW, chipH, 4);
+      ctx.fill();
+      ctx.font = BADGE_FONT;
+      ctx.fillStyle = luminance(accent) > 0.55 ? '#0f172a' : '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(tagText, chipX + tagW / 2, y + h / 2 + 0.5);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(x + 8, y + 8, 7, 7, 2);
+      ctx.fill();
+    }
+    let dx = x + prefixW;
     if (!compact) {
       ctx.font = ROOM_FONT;
-      ctx.fillStyle = '#f3f5fa';
-      ctx.fillText(text, x + 10, y + h / 2 + 1);
-      dx = x + 10 + tw + 8;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(text, dx, y + h / 2 + 1);
+      dx += tw + 8;
     }
     for (const id of dots) {
       accountDot(ctx, dx + 3, y + h / 2, 3.5, this.sim.accounts.get(id)!);
@@ -583,7 +651,7 @@ export class Overlay {
     const h = 18;
     const x = Math.round(cx - w / 2);
     const y = Math.round(cy - h - 4);
-    ctx.fillStyle = 'rgba(22,27,40,0.62)';
+    ctx.fillStyle = 'rgba(22,27,40,0.58)';
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, 6);
     ctx.fill();

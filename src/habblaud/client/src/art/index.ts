@@ -200,7 +200,7 @@ export function drawRug(ctx: CanvasRenderingContext2D, x: number, y: number, w: 
 }
 
 function styleKey(s: WallStyle): string {
-  return `${s.base}|${s.trim ?? ''}|${s.pattern ?? 'plain'}|${s.exterior ? 1 : 0}`;
+  return `${s.base}|${s.trim ?? ''}|${s.accent ?? ''}|${s.pattern ?? 'plain'}|${s.exterior ? 1 : 0}`;
 }
 
 /** Trechos [x0, x1) da parede que não estão em passagens. */

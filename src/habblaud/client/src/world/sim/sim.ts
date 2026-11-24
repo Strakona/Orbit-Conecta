@@ -185,6 +185,15 @@ export class Sim {
         continue;
       }
       if (rs.info.name !== r.name || rs.info.seed !== r.seed) rs.version++;
+      if (rs.info.themeIndex !== r.themeIndex) {
+        try {
+          rs.theme = this.art.roomTheme(r.themeIndex ?? rs.seed) ?? FALLBACK_THEME;
+        } catch {
+          rs.theme = FALLBACK_THEME;
+        }
+        rs.layout = layoutProjectRoom({ id: rs.id, slot: rs.slot, seed: rs.seed }, rs.theme);
+        rs.version++;
+      }
       rs.info = r;
       if (!rs.listed) {
         rs.listed = true;
@@ -253,7 +262,7 @@ export class Sim {
   private createRoom(r: RoomInfo, first: boolean, now: number): RoomState {
     let theme = FALLBACK_THEME;
     try {
-      theme = this.art.roomTheme(r.seed) ?? FALLBACK_THEME;
+      theme = this.art.roomTheme(r.themeIndex ?? r.seed) ?? FALLBACK_THEME;
     } catch {
       theme = FALLBACK_THEME;
     }

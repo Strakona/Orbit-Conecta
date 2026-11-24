@@ -15,7 +15,7 @@ import { STAGE_META } from '../data/seedData';
 import { OfficeStore } from '../habblaud/client/src/net/store';
 import { createWorld } from '../habblaud/client/src/world';
 import type { DaylightMode, Selection, WorldApi, WorldOptions } from '../habblaud/client/src/world/api';
-import { buildHabblaudSnapshot } from '../services/habblaudBridge';
+import { buildHabblaudSnapshot, resolveDemandThemeMap } from '../services/habblaudBridge';
 import { Demand, StageKey } from '../types';
 import { PixelAvatar } from './PixelAvatar';
 
@@ -92,10 +92,16 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
     worldRef.current?.setOptions({ bubbles: next });
   };
 
+  const demandThemes = resolveDemandThemeMap(state.demands);
+
   const selectedDemand =
     selection?.type === 'room'
       ? state.demands.find((d) => d.id === selection.id)
       : undefined;
+
+  const selectedDemandAccent = selectedDemand
+    ? demandThemes.get(selectedDemand.id)?.accent ?? '#0284C7'
+    : undefined;
 
   const selectedStudent =
     selection?.type === 'agent'
@@ -182,14 +188,45 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
         </div>
       </div>
 
+      {/* Bottom-Right Map Legend */}
+      <div className="hidden sm:flex absolute bottom-3 right-3 z-10 pointer-events-none items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-700/90 text-[11px] text-slate-100 shadow-lg">
+        <span className="inline-flex items-center gap-1.5 font-semibold">
+          <span className="inline-flex items-center -space-x-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-500 ring-1 ring-slate-950" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-1 ring-slate-950" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-1 ring-slate-950" />
+          </span>
+          <span>Salas coloridas = Projetos (Demandas)</span>
+        </span>
+        <span className="text-slate-500">·</span>
+        <span className="inline-flex items-center gap-1.5 text-slate-300">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+          <span>Áreas comuns</span>
+        </span>
+      </div>
+
       {/* Bottom-Left Selected Room Card */}
       {selectedDemand && (
-        <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:w-[390px] z-20 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 p-4 shadow-2xl space-y-3">
+        <div
+          className="absolute bottom-3 left-3 right-3 sm:right-auto sm:w-[390px] z-20 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 border-l-4 p-4 shadow-2xl space-y-3"
+          style={{ borderLeftColor: selectedDemandAccent }}
+        >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
-                {selectedDemand.secretaria}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span
+                  className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider text-white"
+                  style={{ backgroundColor: selectedDemandAccent }}
+                >
+                  PROJETO
+                </span>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: selectedDemandAccent }}
+                >
+                  {selectedDemand.secretaria}
+                </span>
+              </div>
               <h4 className="font-display font-bold text-sm text-slate-900">
                 {selectedDemand.title}
               </h4>

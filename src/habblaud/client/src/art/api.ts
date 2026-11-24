@@ -283,6 +283,8 @@ export interface WallStyle {
   base: string;
   /** Cor de detalhes (rodapé/faixa). */
   trim?: string;
+  /** Cor de destaque para a tampa da parede em salas de projeto. */
+  accent?: string;
   pattern?: WallPattern;
   /** Parede externa do prédio (tom mais sóbrio, pode ter textura de tijolo/concreto). */
   exterior?: boolean;

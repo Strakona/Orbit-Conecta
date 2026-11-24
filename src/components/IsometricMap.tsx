@@ -1,6 +1,7 @@
 import React from 'react';
 import { Award, ClipboardList, Flower2, Hand, Presentation, Sparkles } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
+import { resolveDemandThemeMap } from '../services/habblaudBridge';
 import { Demand, StageKey } from '../types';
 import { HabblaudOfficeCanvas } from './HabblaudOfficeCanvas';
 
@@ -26,6 +27,7 @@ export const IsometricMap: React.FC<IsometricMapProps> = ({
   const deliveredDemands = state.demands.filter((d) => d.status === 'ENTREGUE');
   const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
   const raisedCount = state.students.filter((s) => s.handRaised !== null).length;
+  const demandThemes = resolveDemandThemeMap(state.demands);
 
   return (
     <div className="space-y-4">
@@ -80,24 +82,32 @@ export const IsometricMap: React.FC<IsometricMapProps> = ({
             Atalho Rápido para Salas Ativas:
           </div>
           <div className="flex flex-wrap gap-2">
-            {activeDemands.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => openDemandRoom(d.id)}
-                className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-left transition cursor-pointer"
-              >
-                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                  <span>{d.shortName}</span>
-                  {d.status === 'MODO_TESTE' && (
-                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px]">
-                      Modo Teste
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-500">{d.secretaria}</div>
-              </button>
-            ))}
+            {activeDemands.map((d) => {
+              const accent = demandThemes.get(d.id)?.accent ?? '#0284C7';
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => openDemandRoom(d.id)}
+                  style={{ borderLeftColor: accent }}
+                  className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 border-l-4 hover:border-sky-300 text-left transition cursor-pointer"
+                >
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: accent }}
+                    />
+                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{d.shortName}</span>
+                    {d.status === 'MODO_TESTE' && (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px]">
+                        Modo Teste
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500">{d.secretaria}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import {
   INITIAL_TURMAS,
   STAGE_META,
 } from '../data/seedData';
+import { PROJECT_THEME_ACCENTS } from '../habblaud/client/src/art/theme';
 import {
   AiArtifact,
   AuditLogEntry,
@@ -545,67 +546,79 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       checklist: [{ id: `${id}-${key}-1`, label: checkLabel, done: false }],
     });
 
-    const newDemand: Demand = {
-      id,
-      title: input.title,
-      shortName: input.shortName || input.title.slice(0, 18),
-      secretaria: input.secretaria,
-      description: input.description,
-      icon: input.icon || 'Sparkles',
-      status: 'ATIVA',
-      createdAt: new Date().toISOString(),
-      stages: {
-        UI_UX: makeStage('UI_UX', 'Interface & Telas', 'Projetar tela principal, cores e formulário.', 'Definir campos essenciais e contraste'),
-        LOGICA_REGRAS: makeStage('LOGICA_REGRAS', 'Lógica & Regras', 'Criar regras Se/Então para decisões do app.', 'Configurar ao menos 1 regra condicional'),
-        IA_DADOS: makeStage('IA_DADOS', 'IA & Conteúdo (Gemini)', 'Configurar persona, instruções e FAQs do assistente.', 'Testar pergunta real no Estúdio IA'),
-        QA_TESTES: makeStage('QA_TESTES', 'Qualidade & Testes', 'Executar testes ponta a ponta no simulador.', 'Validar fluxo completo sem erros'),
-      },
-      artifacts: {
-        ui: {
-          appTitle: input.shortName || input.title,
-          appSubtitle: input.description,
-          primaryColor: '#0284C7',
-          accentColor: '#10B981',
-          ctaLabel: 'Enviar Consulta',
-          fields: [
-            { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
-          ],
-          infoCards: [
-            { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
-          ],
-        },
-        logic: {
-          rules: [
-            {
-              id: `${id}-r1`,
-              fieldId: 'entrada_principal',
-              operator: 'nao_vazio',
-              value: '',
-              resultTitle: 'Solicitação Processada',
-              resultMessage: 'Seus dados foram analisados com sucesso pelo sistema municipal.',
-              severity: 'success',
-            },
-          ],
-          defaultMessage: 'Preencha o campo principal para receber uma orientação.',
-        },
-        ai: {
-          assistantName: `Guia ${input.shortName}`,
-          persona: `Assistente digital oficial da ${input.secretaria} de Cianorte.`,
-          systemInstructions: 'Responda com clareza, educação e foco em serviços públicos municipais.',
-          greeting: `Olá! Como posso ajudar você em "${input.title}"?`,
-          faqs: [],
-        },
-        qa: {
-          checklist: [{ id: `${id}-qa1`, label: 'Testar envio do formulário e resposta da IA', checked: false }],
-          notes: '',
-        },
-      },
-    };
+    setState((prev) => {
+      const usedColors = new Set(
+        prev.demands
+          .filter((d) => d.status !== 'ENTREGUE')
+          .map((d) => d.artifacts.ui.primaryColor.trim().toUpperCase()),
+      );
+      const uniquePrimaryColor =
+        PROJECT_THEME_ACCENTS.find((c) => !usedColors.has(c.toUpperCase())) ??
+        PROJECT_THEME_ACCENTS[prev.demands.length % PROJECT_THEME_ACCENTS.length] ??
+        '#0284C7';
 
-    setState((prev) => ({
-      ...prev,
-      demands: [newDemand, ...prev.demands],
-    }));
+      const newDemand: Demand = {
+        id,
+        title: input.title,
+        shortName: input.shortName || input.title.slice(0, 18),
+        secretaria: input.secretaria,
+        description: input.description,
+        icon: input.icon || 'Sparkles',
+        status: 'ATIVA',
+        createdAt: new Date().toISOString(),
+        stages: {
+          UI_UX: makeStage('UI_UX', 'Interface & Telas', 'Projetar tela principal, cores e formulário.', 'Definir campos essenciais e contraste'),
+          LOGICA_REGRAS: makeStage('LOGICA_REGRAS', 'Lógica & Regras', 'Criar regras Se/Então para decisões do app.', 'Configurar ao menos 1 regra condicional'),
+          IA_DADOS: makeStage('IA_DADOS', 'IA & Conteúdo (Gemini)', 'Configurar persona, instruções e FAQs do assistente.', 'Testar pergunta real no Estúdio IA'),
+          QA_TESTES: makeStage('QA_TESTES', 'Qualidade & Testes', 'Executar testes ponta a ponta no simulador.', 'Validar fluxo completo sem erros'),
+        },
+        artifacts: {
+          ui: {
+            appTitle: input.shortName || input.title,
+            appSubtitle: input.description,
+            primaryColor: uniquePrimaryColor,
+            accentColor: '#10B981',
+            ctaLabel: 'Enviar Consulta',
+            fields: [
+              { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
+            ],
+            infoCards: [
+              { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
+            ],
+          },
+          logic: {
+            rules: [
+              {
+                id: `${id}-r1`,
+                fieldId: 'entrada_principal',
+                operator: 'nao_vazio',
+                value: '',
+                resultTitle: 'Solicitação Processada',
+                resultMessage: 'Seus dados foram analisados com sucesso pelo sistema municipal.',
+                severity: 'success',
+              },
+            ],
+            defaultMessage: 'Preencha o campo principal para receber uma orientação.',
+          },
+          ai: {
+            assistantName: `Guia ${input.shortName}`,
+            persona: `Assistente digital oficial da ${input.secretaria} de Cianorte.`,
+            systemInstructions: 'Responda com clareza, educação e foco em serviços públicos municipais.',
+            greeting: `Olá! Como posso ajudar você em "${input.title}"?`,
+            faqs: [],
+          },
+          qa: {
+            checklist: [{ id: `${id}-qa1`, label: 'Testar envio do formulário e resposta da IA', checked: false }],
+            notes: '',
+          },
+        },
+      };
+
+      return {
+        ...prev,
+        demands: [newDemand, ...prev.demands],
+      };
+    });
 
     pushToast('Nova demanda cadastrada!', `"${input.title}" já está aberta na Sala de Demandas.`, 'success');
   };
