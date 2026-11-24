@@ -139,6 +139,7 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
 
         <button
           onClick={onClose}
+          aria-label="Fechar Tutores Socráticos IA"
           className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
         >
           <X className="w-4 h-4" />
@@ -236,6 +237,9 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
         className="p-3 border-t border-slate-200 bg-white flex items-center gap-2"
       >
         <input
+          id="socratic-tutor-input"
+          name="tutorMessage"
+          aria-label="Mensagem para o Tutor Socrático"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Conte o que você está pensando..."
@@ -244,6 +248,7 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
         <button
           type="submit"
           disabled={loading}
+          aria-label="Enviar mensagem ao Tutor Socrático"
           className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50"
         >
           <Send className="w-4 h-4" />

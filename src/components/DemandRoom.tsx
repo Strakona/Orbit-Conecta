@@ -30,9 +30,11 @@ import { UnifiedPreview } from './UnifiedPreview';
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
 const SelectOptionsInput: React.FC<{
+  id?: string;
+  ariaLabel?: string;
   options: string[];
   onChange: (nextOptions: string[]) => void;
-}> = ({ options, onChange }) => {
+}> = ({ id, ariaLabel, options, onChange }) => {
   const [text, setText] = useState(() => options.join(', '));
 
   useEffect(() => {
@@ -60,6 +62,9 @@ const SelectOptionsInput: React.FC<{
 
   return (
     <input
+      id={id}
+      name={id}
+      aria-label={ariaLabel ?? 'Opções separadas por vírgula'}
       value={text}
       onChange={(e) => handleChange(e.target.value)}
       placeholder="Opções separadas por vírgula"
@@ -233,7 +238,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 scroll-mt-24">
       {/* Top Room Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -241,6 +246,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
             onClick={() => openDemandRoom(null)}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
             title="Voltar ao Mapa 2.5D"
+            aria-label="Voltar ao Mapa 2.5D"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -327,7 +333,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
       )}
 
       {/* 4 Workbench Tabs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 scroll-mt-24">
         {STAGE_ORDER.map((key) => {
           const meta = STAGE_META[key];
           const st = demand.stages[key];
@@ -344,7 +350,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-bold">
-                  {meta.bubble} {meta.shortLabel}
+                  {meta.bubble.split(' ')[0]} {meta.shortLabel}
                 </span>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
@@ -415,20 +421,24 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ui-app-title" className="block text-xs font-semibold text-slate-700 mb-1">
                     Título do Aplicativo
                   </label>
                   <input
+                    id="ui-app-title"
+                    name="appTitle"
                     value={uiDraft.appTitle}
                     onChange={(e) => setUiDraft({ ...uiDraft, appTitle: e.target.value })}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ui-cta-label" className="block text-xs font-semibold text-slate-700 mb-1">
                     Texto do Botão Principal (CTA)
                   </label>
                   <input
+                    id="ui-cta-label"
+                    name="ctaLabel"
                     value={uiDraft.ctaLabel}
                     onChange={(e) => setUiDraft({ ...uiDraft, ctaLabel: e.target.value })}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
@@ -437,10 +447,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="ui-app-subtitle" className="block text-xs font-semibold text-slate-700 mb-1">
                   Subtítulo explicativo para o cidadão
                 </label>
                 <input
+                  id="ui-app-subtitle"
+                  name="appSubtitle"
                   value={uiDraft.appSubtitle}
                   onChange={(e) => setUiDraft({ ...uiDraft, appSubtitle: e.target.value })}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
@@ -449,11 +461,13 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ui-primary-color" className="block text-xs font-semibold text-slate-700 mb-1">
                     Cor Primária (Cabeçalho)
                   </label>
                   <div className="flex items-center gap-2">
                     <input
+                      id="ui-primary-color"
+                      name="primaryColor"
                       type="color"
                       value={uiDraft.primaryColor}
                       onChange={(e) => setUiDraft({ ...uiDraft, primaryColor: e.target.value })}
@@ -463,11 +477,13 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ui-accent-color" className="block text-xs font-semibold text-slate-700 mb-1">
                     Cor de Destaque (Botão)
                   </label>
                   <div className="flex items-center gap-2">
                     <input
+                      id="ui-accent-color"
+                      name="accentColor"
                       type="color"
                       value={uiDraft.accentColor}
                       onChange={(e) => setUiDraft({ ...uiDraft, accentColor: e.target.value })}
@@ -498,6 +514,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
                   >
                     <input
+                      id={`ui-field-label-${field.id}`}
+                      name={`fieldLabel_${field.id}`}
+                      aria-label={`Rótulo do campo ${idx + 1}`}
                       value={field.label}
                       onChange={(e) => {
                         const next = [...uiDraft.fields];
@@ -508,6 +527,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       className="sm:col-span-5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                     />
                     <select
+                      id={`ui-field-type-${field.id}`}
+                      name={`fieldType_${field.id}`}
+                      aria-label={`Tipo do campo ${field.label || idx + 1}`}
                       value={field.type}
                       onChange={(e) => {
                         const next = [...uiDraft.fields];
@@ -526,6 +548,8 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     </select>
                     {field.type === 'select' ? (
                       <SelectOptionsInput
+                        id={`ui-field-options-${field.id}`}
+                        ariaLabel={`Opções do campo ${field.label || idx + 1}`}
                         options={field.options ?? []}
                         onChange={(nextOptions) => {
                           const next = [...uiDraft.fields];
@@ -535,6 +559,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       />
                     ) : (
                       <input
+                        id={`ui-field-placeholder-${field.id}`}
+                        name={`fieldPlaceholder_${field.id}`}
+                        aria-label={`Placeholder do campo ${field.label || idx + 1}`}
                         value={field.placeholder ?? ''}
                         onChange={(e) => {
                           const next = [...uiDraft.fields];
@@ -547,6 +574,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     )}
                     <button
                       type="button"
+                      aria-label={`Remover campo ${field.label || idx + 1}`}
                       onClick={() =>
                         setUiDraft({
                           ...uiDraft,
@@ -588,6 +616,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="font-bold text-violet-800">SE</span>
                     <select
+                      id={`logic-field-${rule.id}`}
+                      name={`logicField_${rule.id}`}
+                      aria-label={`Campo da regra ${idx + 1}`}
                       value={rule.fieldId}
                       onChange={(e) => {
                         const next = [...logicDraft.rules];
@@ -604,6 +635,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     </select>
 
                     <select
+                      id={`logic-op-${rule.id}`}
+                      name={`logicOp_${rule.id}`}
+                      aria-label={`Operador da regra ${idx + 1}`}
                       value={rule.operator}
                       onChange={(e) => {
                         const next = [...logicDraft.rules];
@@ -621,6 +655,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
 
                     {rule.operator !== 'nao_vazio' && (
                       <input
+                        id={`logic-val-${rule.id}`}
+                        name={`logicVal_${rule.id}`}
+                        aria-label={`Valor da regra ${idx + 1}`}
                         value={rule.value}
                         onChange={(e) => {
                           const next = [...logicDraft.rules];
@@ -633,6 +670,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     )}
 
                     <select
+                      id={`logic-sev-${rule.id}`}
+                      name={`logicSev_${rule.id}`}
+                      aria-label={`Severidade da regra ${idx + 1}`}
                       value={rule.severity}
                       onChange={(e) => {
                         const next = [...logicDraft.rules];
@@ -649,6 +689,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
 
                     <button
                       type="button"
+                      aria-label={`Remover regra ${idx + 1}`}
                       onClick={() =>
                         setLogicDraft({
                           ...logicDraft,
@@ -663,6 +704,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
+                      id={`logic-title-${rule.id}`}
+                      name={`logicTitle_${rule.id}`}
+                      aria-label={`Título do resultado da regra ${idx + 1}`}
                       value={rule.resultTitle}
                       onChange={(e) => {
                         const next = [...logicDraft.rules];
@@ -673,6 +717,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
                     />
                     <input
+                      id={`logic-msg-${rule.id}`}
+                      name={`logicMsg_${rule.id}`}
+                      aria-label={`Mensagem da regra ${idx + 1}`}
                       value={rule.resultMessage}
                       onChange={(e) => {
                         const next = [...logicDraft.rules];
@@ -687,10 +734,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               ))}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="logic-default-message" className="block text-xs font-semibold text-slate-700 mb-1">
                   Mensagem Padrão (quando nenhuma regra especial for ativada)
                 </label>
                 <input
+                  id="logic-default-message"
+                  name="defaultMessage"
                   value={logicDraft.defaultMessage}
                   onChange={(e) => setLogicDraft({ ...logicDraft, defaultMessage: e.target.value })}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
@@ -704,20 +753,24 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ai-assistant-name" className="block text-xs font-semibold text-slate-700 mb-1">
                     Nome do Assistente Municipal
                   </label>
                   <input
+                    id="ai-assistant-name"
+                    name="assistantName"
                     value={aiDraft.assistantName}
                     onChange={(e) => setAiDraft({ ...aiDraft, assistantName: e.target.value })}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label htmlFor="ai-persona" className="block text-xs font-semibold text-slate-700 mb-1">
                     Persona / Papel
                   </label>
                   <input
+                    id="ai-persona"
+                    name="persona"
                     value={aiDraft.persona}
                     onChange={(e) => setAiDraft({ ...aiDraft, persona: e.target.value })}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
@@ -726,10 +779,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="ai-system-instructions" className="block text-xs font-semibold text-slate-700 mb-1">
                   Instruções de Comportamento e Segurança (System Prompt do Projeto)
                 </label>
                 <textarea
+                  id="ai-system-instructions"
+                  name="systemInstructions"
                   rows={3}
                   value={aiDraft.systemInstructions}
                   onChange={(e) => setAiDraft({ ...aiDraft, systemInstructions: e.target.value })}
@@ -738,10 +793,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="ai-greeting" className="block text-xs font-semibold text-slate-700 mb-1">
                   Saudação Inicial
                 </label>
                 <input
+                  id="ai-greeting"
+                  name="greeting"
                   value={aiDraft.greeting}
                   onChange={(e) => setAiDraft({ ...aiDraft, greeting: e.target.value })}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
@@ -770,6 +827,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                   >
                     <div className="flex items-center gap-2">
                       <input
+                        id={`faq-question-${faq.id}`}
+                        name={`faqQuestion_${faq.id}`}
+                        aria-label={`Pergunta da FAQ ${idx + 1}`}
                         value={faq.question}
                         onChange={(e) => {
                           const next = [...aiDraft.faqs];
@@ -781,6 +841,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       />
                       <button
                         type="button"
+                        aria-label={`Remover FAQ ${idx + 1}`}
                         onClick={() =>
                           setAiDraft({
                             ...aiDraft,
@@ -793,6 +854,9 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                       </button>
                     </div>
                     <input
+                      id={`faq-answer-${faq.id}`}
+                      name={`faqAnswer_${faq.id}`}
+                      aria-label={`Resposta da FAQ ${idx + 1}`}
                       value={faq.answer}
                       onChange={(e) => {
                         const next = [...aiDraft.faqs];
@@ -818,9 +882,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                 {qaDraft.checklist.map((item, idx) => (
                   <label
                     key={item.id}
+                    htmlFor={`qa-check-${item.id}`}
                     className="flex items-center gap-2.5 p-2.5 rounded-xl bg-amber-50/50 border border-amber-200 text-xs cursor-pointer"
                   >
                     <input
+                      id={`qa-check-${item.id}`}
+                      name={`qaCheck_${item.id}`}
                       type="checkbox"
                       checked={item.checked}
                       onChange={() => {
@@ -838,10 +905,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="qa-notes" className="block text-xs font-semibold text-slate-700 mb-1">
                   Relatório de Testes & Observações
                 </label>
                 <textarea
+                  id="qa-notes"
+                  name="qaNotes"
                   rows={2}
                   value={qaDraft.notes}
                   onChange={(e) => setQaDraft({ ...qaDraft, notes: e.target.value })}
@@ -873,9 +942,12 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
               {stageObj.checklist.map((item) => (
                 <label
                   key={item.id}
+                  htmlFor={`stage-check-${activeStage}-${item.id}`}
                   className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs cursor-pointer"
                 >
                   <input
+                    id={`stage-check-${activeStage}-${item.id}`}
+                    name={`stageCheck_${item.id}`}
                     type="checkbox"
                     checked={item.done}
                     onChange={() => toggleStageChecklistItem(demand.id, activeStage, item.id)}
@@ -906,12 +978,15 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     className="w-full py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Hand className="w-4 h-4" />
-                    <span>✋ Pedir Ajuda ao Professor</span>
+                    <span>Pedir Ajuda ao Professor</span>
                   </button>
 
                   {showHelpBox && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
                       <input
+                        id="student-help-note"
+                        name="helpNote"
+                        aria-label="Qual é sua dúvida rápida?"
                         value={helpNote}
                         onChange={(e) => setHelpNote(e.target.value)}
                         placeholder="Qual é sua dúvida rápida?"
@@ -941,7 +1016,7 @@ export const DemandRoom: React.FC<{ demandId: string }> = ({ demandId }) => {
                     className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>✅ Concluir Etapa e Enviar para Avaliação</span>
+                    <span>Concluir Etapa e Enviar para Avaliação</span>
                   </button>
                 </>
               ) : (

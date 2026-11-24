@@ -79,6 +79,9 @@ export const ProfessorPanel: React.FC = () => {
         </div>
 
         <select
+          id="professor-turma-select"
+          name="turmaId"
+          aria-label="Selecionar turma"
           value={selectedTurmaId}
           onChange={(e) => setSelectedTurmaId(e.target.value)}
           className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800"
@@ -98,7 +101,7 @@ export const ProfessorPanel: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="font-display font-bold text-sm text-amber-950 flex items-center gap-2">
               <Hand className="w-4 h-4 text-amber-600" />
-              <span>✋ Dúvidas Urgentes ({helpAlerts.length})</span>
+              <span>Dúvidas Urgentes ({helpAlerts.length})</span>
             </h3>
             <span className="text-[11px] text-amber-700 font-medium">Prioridade Alta</span>
           </div>
@@ -159,7 +162,7 @@ export const ProfessorPanel: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="font-display font-bold text-sm text-emerald-950 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>✅ Etapas Prontas para Avaliar ({reviewQueue.length})</span>
+              <span>Etapas Prontas para Avaliar ({reviewQueue.length})</span>
             </h3>
             <span className="text-[11px] text-emerald-700 font-medium">Avaliação Pedagógica</span>
           </div>
@@ -208,7 +211,7 @@ export const ProfessorPanel: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
         <h3 className="font-display font-bold text-base text-slate-900">
           Monitoramento Síncrono — {state.turmas.find((t) => t.id === selectedTurmaId)?.name} (
-          {turmaStudents.length} alunos ativos)
+          {turmaStudents.length} {turmaStudents.length === 1 ? 'aluno ativo' : 'alunos ativos'})
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {turmaStudents.map((stu) => {
@@ -237,7 +240,9 @@ export const ProfessorPanel: React.FC = () => {
                   <span className="font-semibold text-sky-700">
                     {stu.activeStage ? STAGE_META[stu.activeStage].shortLabel : 'Livre'}
                   </span>
-                  <span className="text-slate-500">{stu.badges.length} badges</span>
+                  <span className="text-slate-500">
+                    {stu.badges.length} {stu.badges.length === 1 ? 'badge' : 'badges'}
+                  </span>
                 </div>
               </div>
             );
@@ -367,6 +372,7 @@ export const ProfessorPanel: React.FC = () => {
               </div>
               <button
                 onClick={() => setInspectTarget(null)}
+                aria-label="Fechar avaliação pedagógica"
                 className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -403,10 +409,12 @@ export const ProfessorPanel: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                 <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
-                  <label className="block text-xs font-bold text-emerald-950">
+                  <label htmlFor="professor-badge-input" className="block text-xs font-bold text-emerald-950">
                     Badge de Conquista
                   </label>
                   <input
+                    id="professor-badge-input"
+                    name="badgeName"
                     value={badgeInput}
                     onChange={(e) => setBadgeInput(e.target.value)}
                     className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs"
@@ -424,11 +432,13 @@ export const ProfessorPanel: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
-                  <label className="block text-xs font-bold text-amber-950 flex items-center gap-1">
+                  <label htmlFor="professor-feedback-input" className="block text-xs font-bold text-amber-950 flex items-center gap-1">
                     <MessageSquareWarning className="w-3.5 h-3.5" />
                     <span>Devolver com Feedback Formativo</span>
                   </label>
                   <input
+                    id="professor-feedback-input"
+                    name="feedback"
                     value={feedbackInput}
                     onChange={(e) => setFeedbackInput(e.target.value)}
                     placeholder="Ex.: Adicione uma regra para casos urgentes..."

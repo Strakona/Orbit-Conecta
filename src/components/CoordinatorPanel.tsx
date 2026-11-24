@@ -102,10 +102,12 @@ export const CoordinatorPanel: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label htmlFor="demand-title" className="block text-xs font-semibold text-slate-700 mb-1">
                 Título da Demanda
               </label>
               <input
+                id="demand-title"
+                name="demandTitle"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -114,10 +116,12 @@ export const CoordinatorPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label htmlFor="demand-short-name" className="block text-xs font-semibold text-slate-700 mb-1">
                 Nome curto (Placa da Sala)
               </label>
               <input
+                id="demand-short-name"
+                name="demandShortName"
                 value={shortName}
                 onChange={(e) => setShortName(e.target.value)}
                 placeholder="Ex.: Agenda Jovem"
@@ -127,10 +131,12 @@ export const CoordinatorPanel: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label htmlFor="demand-secretaria" className="block text-xs font-semibold text-slate-700 mb-1">
               Secretaria Demandante
             </label>
             <select
+              id="demand-secretaria"
+              name="demandSecretaria"
               value={secretaria}
               onChange={(e) => setSecretaria(e.target.value)}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white"
@@ -145,10 +151,12 @@ export const CoordinatorPanel: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label htmlFor="demand-description" className="block text-xs font-semibold text-slate-700 mb-1">
               Descrição do Problema Digital
             </label>
             <textarea
+              id="demand-description"
+              name="demandDescription"
               required
               rows={2}
               value={description}
@@ -216,10 +224,20 @@ export const CoordinatorPanel: React.FC = () => {
               simulador inteligente responde localmente.
             </p>
 
-            <div className="flex items-center gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setGeminiApiKey(apiKeyDraft);
+              }}
+              className="flex items-center gap-2"
+            >
               <div className="relative flex-1">
                 <input
+                  id="coordinator-gemini-key"
+                  name="geminiApiKey"
                   type={showKey ? 'text' : 'password'}
+                  autoComplete="off"
+                  aria-label="Chave da Google Gemini API"
                   value={apiKeyDraft}
                   onChange={(e) => setApiKeyDraft(e.target.value)}
                   placeholder="AIzaSy... (opcional para demo)"
@@ -227,6 +245,7 @@ export const CoordinatorPanel: React.FC = () => {
                 />
                 <button
                   type="button"
+                  aria-label={showKey ? 'Ocultar chave API' : 'Mostrar chave API'}
                   onClick={() => setShowKey((v) => !v)}
                   className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
@@ -234,13 +253,12 @@ export const CoordinatorPanel: React.FC = () => {
                 </button>
               </div>
               <button
-                type="button"
-                onClick={() => setGeminiApiKey(apiKeyDraft)}
+                type="submit"
                 className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
               >
                 Salvar
               </button>
-            </div>
+            </form>
           </div>
 
           {/* Overview of all 4 Turmas AH/SD */}
@@ -265,8 +283,12 @@ export const CoordinatorPanel: React.FC = () => {
                       <div className="text-[11px] text-slate-500">{turma.schedule}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-indigo-700">{count} estudantes</div>
-                      <div className="text-[10px] text-slate-500">{badges} badges conquistadas</div>
+                      <div className="font-semibold text-indigo-700">
+                        {count} {count === 1 ? 'estudante' : 'estudantes'}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {badges} {badges === 1 ? 'badge conquistada' : 'badges conquistadas'}
+                      </div>
                     </div>
                   </div>
                 );
@@ -290,6 +312,9 @@ export const CoordinatorPanel: React.FC = () => {
             </p>
           </div>
           <input
+            id="audit-log-filter"
+            name="auditFilter"
+            aria-label="Filtrar log de auditoria"
             value={auditFilter}
             onChange={(e) => setAuditFilter(e.target.value)}
             placeholder="Filtrar por UUID, demanda ou palavra..."

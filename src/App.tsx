@@ -70,6 +70,7 @@ const OrbitWorkspace: React.FC = () => {
               </div>
               <button
                 onClick={() => setAuditoriumDemand(null)}
+                aria-label="Fechar Auditório de Pitches"
                 className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -103,6 +104,7 @@ const OrbitWorkspace: React.FC = () => {
             </div>
             <button
               onClick={() => dismissToast(t.id)}
+              aria-label="Fechar notificação"
               className="text-slate-400 hover:text-slate-700 cursor-pointer"
             >
               <X className="w-4 h-4" />

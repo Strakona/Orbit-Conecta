@@ -55,9 +55,12 @@ function validFile(f: unknown): f is ManifestFile {
   return typeof o.file === 'string' && o.file.length > 0 && !o.file.includes('..');
 }
 
-export async function loadWorldAssets(signal?: AbortSignal): Promise<WorldAssets | null> {
+let cachedAssets: WorldAssets | null = null;
+let inflightAssets: Promise<WorldAssets | null> | null = null;
+
+async function fetchWorldAssets(): Promise<WorldAssets | null> {
   try {
-    const res = await fetch('/assets/manifest.json', { signal, cache: 'no-cache' });
+    const res = await fetch('/assets/manifest.json', { cache: 'no-cache' });
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null;
     const m = (await res.json()) as Manifest;
     const wallArt: WallArtAsset[] = [];
@@ -94,4 +97,18 @@ export async function loadWorldAssets(signal?: AbortSignal): Promise<WorldAssets
   } catch {
     return null;
   }
+}
+
+export async function loadWorldAssets(signal?: AbortSignal): Promise<WorldAssets | null> {
+  if (signal?.aborted) return null;
+  if (cachedAssets) return cachedAssets;
+  if (!inflightAssets) {
+    inflightAssets = fetchWorldAssets().then((res) => {
+      if (res) cachedAssets = res;
+      inflightAssets = null;
+      return res;
+    });
+  }
+  const res = await inflightAssets;
+  return signal?.aborted ? null : res;
 }

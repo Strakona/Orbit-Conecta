@@ -64,6 +64,7 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
           </div>
           <button
             onClick={onClose}
+            aria-label="Fechar Sala de Demandas"
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -120,7 +121,7 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
                       <div>
                         <div className="flex items-center justify-between gap-1">
                           <span className={`text-xs font-bold ${meta.color}`}>
-                            {meta.bubble} {meta.shortLabel}
+                            {meta.bubble.split(' ')[0]} {meta.shortLabel}
                           </span>
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.cls}`}

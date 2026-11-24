@@ -185,6 +185,7 @@ export const Header: React.FC = () => {
           <button
             onClick={toggleHighContrast}
             title="Alternar Alto Contraste (Acessibilidade)"
+            aria-label="Alternar Alto Contraste"
             className={`p-2 rounded-lg border text-xs cursor-pointer transition ${
               state.highContrast
                 ? 'bg-amber-400 text-slate-950 border-amber-300'

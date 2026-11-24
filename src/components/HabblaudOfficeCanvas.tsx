@@ -119,7 +119,7 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
         <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-700 text-white text-xs font-semibold shadow-lg">
           Motor Habblaud 2.5D · CEMI 2 / SMED Cianorte
         </span>
-        <span className="hidden md:inline-block px-2.5 py-1 rounded-xl bg-sky-500/20 border border-sky-400/40 text-sky-200 text-[11px] font-medium backdrop-blur-md">
+        <span className="hidden md:inline-block px-2.5 py-1 rounded-xl bg-slate-950/80 border border-sky-400/50 text-sky-100 text-[11px] font-medium backdrop-blur-md shadow-lg">
           Clique em uma sala ou avatar · Arraste para mover · Roda do mouse para zoom
         </span>
       </div>
@@ -158,6 +158,7 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
           <button
             onClick={() => worldRef.current?.zoomBy(1.25)}
             title="Aproximar Zoom"
+            aria-label="Aproximar Zoom"
             className="p-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -165,6 +166,7 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
           <button
             onClick={() => worldRef.current?.zoomBy(0.8)}
             title="Afastar Zoom"
+            aria-label="Afastar Zoom"
             className="p-2 text-slate-200 hover:bg-slate-800 border-l border-slate-700 cursor-pointer"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -172,6 +174,7 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
           <button
             onClick={() => worldRef.current?.overview()}
             title="Visão Geral do Prédio"
+            aria-label="Visão Geral do Prédio"
             className="p-2 text-slate-200 hover:bg-slate-800 border-l border-slate-700 cursor-pointer"
           >
             <Maximize2 className="w-3.5 h-3.5" />
@@ -291,7 +294,8 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] text-slate-500">
-              {selectedStudent.badges.length} badges conquistadas
+              {selectedStudent.badges.length}{' '}
+              {selectedStudent.badges.length === 1 ? 'badge conquistada' : 'badges conquistadas'}
             </span>
             {studentRoom && (
               <button

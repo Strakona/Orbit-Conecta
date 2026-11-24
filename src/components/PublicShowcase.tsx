@@ -163,6 +163,9 @@ export const PublicShowcase: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             <select
+              id="showcase-student-select"
+              name="studentId"
+              aria-label="Selecionar estudante para o cartão"
               value={selectedStudent.id}
               onChange={(e) => setSelectedStudentId(e.target.value)}
               className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold bg-slate-50"
@@ -280,6 +283,7 @@ export const PublicShowcase: React.FC = () => {
               </div>
               <button
                 onClick={() => setTestingDemand(null)}
+                aria-label="Fechar protótipo oficial"
                 className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />

@@ -105,7 +105,7 @@ export const IsometricMap: React.FC<IsometricMapProps> = ({
           <div>
             <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
               <Flower2 className="w-4 h-4 text-emerald-600" />
-              <span>🌸 Jardins da Inovação ({deliveredDemands.length})</span>
+              <span>Jardins da Inovação ({deliveredDemands.length})</span>
             </div>
             <p className="text-[11px] text-emerald-800 mt-1">
               {deliveredDemands.length > 0

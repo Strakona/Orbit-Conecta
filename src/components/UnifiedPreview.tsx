@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -46,6 +46,7 @@ function evaluateRule(rule: LogicRule, rawVal: string): boolean {
 
 export const UnifiedPreview: React.FC<UnifiedPreviewProps> = ({ demand, compact = false }) => {
   const { state } = useOrbit();
+  const previewId = useId();
   const { ui, logic, ai } = demand.artifacts;
 
   const [formValues, setFormValues] = useState<Record<string, string>>(() => {
@@ -202,38 +203,45 @@ export const UnifiedPreview: React.FC<UnifiedPreviewProps> = ({ demand, compact 
             onSubmit={handleRunLogic}
             className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs"
           >
-            {ui.fields.map((field) => (
-              <div key={field.id}>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {field.label}
-                </label>
-                {field.type === 'select' ? (
-                  <select
-                    value={formValues[field.id] ?? ''}
-                    onChange={(e) =>
-                      setFormValues((prev) => ({ ...prev, [field.id]: e.target.value }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  >
-                    {(field.options ?? []).map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={field.type}
-                    value={formValues[field.id] ?? ''}
-                    placeholder={field.placeholder}
-                    onChange={(e) =>
-                      setFormValues((prev) => ({ ...prev, [field.id]: e.target.value }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                )}
-              </div>
-            ))}
+            {ui.fields.map((field) => {
+              const inputId = `${previewId}-${field.id}`;
+              return (
+                <div key={field.id}>
+                  <label htmlFor={inputId} className="block text-xs font-semibold text-slate-700 mb-1">
+                    {field.label}
+                  </label>
+                  {field.type === 'select' ? (
+                    <select
+                      id={inputId}
+                      name={field.id}
+                      value={formValues[field.id] ?? ''}
+                      onChange={(e) =>
+                        setFormValues((prev) => ({ ...prev, [field.id]: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      {(field.options ?? []).map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={inputId}
+                      name={field.id}
+                      type={field.type}
+                      value={formValues[field.id] ?? ''}
+                      placeholder={field.placeholder}
+                      onChange={(e) =>
+                        setFormValues((prev) => ({ ...prev, [field.id]: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    />
+                  )}
+                </div>
+              );
+            })}
 
             <button
               type="submit"
@@ -327,6 +335,9 @@ export const UnifiedPreview: React.FC<UnifiedPreviewProps> = ({ demand, compact 
             className="p-2 border-t border-slate-200 bg-white flex items-center gap-1.5"
           >
             <input
+              id={`${previewId}-chat-input`}
+              name="assistantQuestion"
+              aria-label="Pergunte ao assistente do projeto"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Pergunte ao assistente do projeto..."
@@ -335,6 +346,7 @@ export const UnifiedPreview: React.FC<UnifiedPreviewProps> = ({ demand, compact 
             <button
               type="submit"
               disabled={isSending}
+              aria-label="Enviar pergunta ao assistente"
               className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
