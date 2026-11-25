@@ -7,6 +7,7 @@ import { DemandRoom } from './components/DemandRoom';
 import { Header } from './components/Header';
 import { IsometricMap } from './components/IsometricMap';
 import { LoginScreen } from './components/LoginScreen';
+import { DemandPortal } from './components/portal/DemandPortal';
 import { ProfessorPanel } from './components/ProfessorPanel';
 import { PublicShowcase } from './components/PublicShowcase';
 import { UnifiedPreview } from './components/UnifiedPreview';
@@ -17,9 +18,52 @@ const OrbitWorkspace: React.FC = () => {
   const { state, toasts, dismissToast } = useOrbit();
   const [boardOpen, setBoardOpen] = useState(false);
   const [auditoriumDemand, setAuditoriumDemand] = useState<Demand | null>(null);
+  const [publicPortalOpen, setPublicPortalOpen] = useState(false);
+
+  const toastPortal = (
+    <div className="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto rounded-2xl border p-3.5 shadow-xl flex items-start justify-between gap-3 bg-white ${
+            t.type === 'success'
+              ? 'border-emerald-300'
+              : t.type === 'warning'
+              ? 'border-amber-300'
+              : 'border-sky-300'
+          }`}
+        >
+          <div>
+            <div className="font-display font-bold text-xs text-slate-900">{t.title}</div>
+            {t.description && (
+              <p className="text-[11px] text-slate-600 mt-0.5">{t.description}</p>
+            )}
+          </div>
+          <button
+            onClick={() => dismissToast(t.id)}
+            aria-label="Fechar notificação"
+            className="text-slate-400 hover:text-slate-700 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 
   if (!state.session) {
-    return <LoginScreen />;
+    if (publicPortalOpen) {
+      return (
+        <>
+          <DemandPortal
+            isPublicMode
+            onExitPublicMode={() => setPublicPortalOpen(false)}
+          />
+          {toastPortal}
+        </>
+      );
+    }
+    return <LoginScreen onOpenPublicPortal={() => setPublicPortalOpen(true)} />;
   }
 
   return (
@@ -30,6 +74,7 @@ const OrbitWorkspace: React.FC = () => {
         {state.activeTab === 'PROFESSOR' && <ProfessorPanel />}
         {state.activeTab === 'COORDENADOR' && <CoordinatorPanel />}
         {state.activeTab === 'VITRINE' && <PublicShowcase />}
+        {state.activeTab === 'PORTAL' && <DemandPortal />}
 
         {state.activeTab === 'LAB' && (
           <>
@@ -84,34 +129,7 @@ const OrbitWorkspace: React.FC = () => {
       )}
 
       {/* Toast Notifications */}
-      <div className="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto rounded-2xl border p-3.5 shadow-xl flex items-start justify-between gap-3 bg-white ${
-              t.type === 'success'
-                ? 'border-emerald-300'
-                : t.type === 'warning'
-                ? 'border-amber-300'
-                : 'border-sky-300'
-            }`}
-          >
-            <div>
-              <div className="font-display font-bold text-xs text-slate-900">{t.title}</div>
-              {t.description && (
-                <p className="text-[11px] text-slate-600 mt-0.5">{t.description}</p>
-              )}
-            </div>
-            <button
-              onClick={() => dismissToast(t.id)}
-              aria-label="Fechar notificação"
-              className="text-slate-400 hover:text-slate-700 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {toastPortal}
     </div>
   );
 };

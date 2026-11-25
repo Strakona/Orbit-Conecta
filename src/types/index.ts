@@ -196,15 +196,82 @@ export interface ToastMessage {
   type: 'info' | 'success' | 'warning';
 }
 
+export type PortalSubmissionStatus =
+  | 'PENDENTE_TRIAGEM'
+  | 'EM_REVISAO'
+  | 'AJUSTE_SOLICITADO'
+  | 'APROVADA_ORBIT'
+  | 'ARQUIVADA';
+
+export type ViabilityStatus =
+  | 'ALTAMENTE_VIAVEL'
+  | 'VIAVEL_COM_ADAPTACAO'
+  | 'FORA_DE_ESCOPO_HARDWARE';
+
+export type UrgencyLevel = 'BAIXA' | 'MEDIA' | 'ALTA';
+
+export interface StationPlan {
+  taskTitle: string;
+  objective: string;
+  technicalDetails: string;
+  checklist: string[];
+}
+
+export interface HardwareAdaptationProposal {
+  suggestedTitle: string;
+  suggestedDescription: string;
+  adaptationNotes: string;
+}
+
+export interface DemandAiAnalysis {
+  viabilityStatus: ViabilityStatus;
+  viabilityScore: number;
+  viabilityRationale: string;
+  friendlySummary: string;
+  suggestedShortName: string;
+  hardwareAdaptation?: HardwareAdaptationProposal;
+  stations: Record<StageKey, StationPlan>;
+  starterArtifacts: Demand['artifacts'];
+  mode: 'GEMINI_LIVE' | 'SIMULADO';
+  analyzedAt: string;
+}
+
+export interface ClarificationEntry {
+  id: string;
+  author: 'MENTOR' | 'SOLICITANTE';
+  message: string;
+  timestamp: string;
+}
+
+export interface PortalSubmission {
+  id: string;
+  protocol: string;
+  requesterName: string;
+  requesterRole: string;
+  organization: string;
+  organizationType: 'ESCOLA' | 'SECRETARIA';
+  title: string;
+  problemDescription: string;
+  targetAudienceAndImpact: string;
+  urgency: UrgencyLevel;
+  status: PortalSubmissionStatus;
+  createdAt: string;
+  updatedAt: string;
+  analysis: DemandAiAnalysis;
+  clarifications: ClarificationEntry[];
+  linkedDemandId?: string;
+}
+
 export interface OrbitState {
   session: SessionUser | null;
   turmas: Turma[];
   students: Student[];
   demands: Demand[];
+  portalSubmissions: PortalSubmission[];
   auditLogs: AuditLogEntry[];
   geminiApiKey: string;
   highContrast: boolean;
   viewMode: 'MAP' | 'CARDS';
   activeDemandId: string | null;
-  activeTab: 'LAB' | 'PROFESSOR' | 'COORDENADOR' | 'VITRINE';
+  activeTab: 'LAB' | 'PROFESSOR' | 'COORDENADOR' | 'VITRINE' | 'PORTAL';
 }

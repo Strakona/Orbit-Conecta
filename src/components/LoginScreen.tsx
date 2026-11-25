@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
+  ClipboardList,
   Delete,
   GraduationCap,
   KeyRound,
@@ -13,7 +14,11 @@ import { useOrbit } from '../context/OrbitContext';
 import { Role } from '../types';
 import { PixelAvatar } from './PixelAvatar';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  onOpenPublicPortal?: () => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenPublicPortal }) => {
   const { state, loginAsStudent, loginAsRole } = useOrbit();
   const [selectedRole, setSelectedRole] = useState<Role>('ALUNO');
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>(state.turmas[0]?.id ?? 'turma-1');
@@ -142,6 +147,31 @@ export const LoginScreen: React.FC = () => {
                 </div>
               </button>
             </div>
+
+            {onOpenPublicPortal && (
+              <div className="mt-5 pt-5 border-t border-slate-700/70">
+                <button
+                  type="button"
+                  onClick={onOpenPublicPortal}
+                  className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-sky-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 border border-sky-400/50 text-left transition flex items-center justify-between gap-3 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-sky-400 text-slate-950 flex items-center justify-center shrink-0">
+                      <ClipboardList className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-white">
+                        Portal de Demandas (Sem Login)
+                      </div>
+                      <div className="text-[11px] text-sky-200">
+                        Para Escolas e Secretarias enviarem problemas ou consultarem protocolo
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-sky-300 group-hover:translate-x-0.5 transition shrink-0" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-7 pt-5 border-t border-slate-700/70 flex items-center gap-2 text-xs text-slate-400">

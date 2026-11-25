@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Award,
+  ClipboardCheck,
   Contrast,
   GraduationCap,
   LayoutGrid,
@@ -30,6 +31,9 @@ export const Header: React.FC = () => {
 
   const pendingAlertsCount = state.students.filter((s) => s.handRaised !== null).length;
   const deliveredCount = state.demands.filter((d) => d.status === 'ENTREGUE').length;
+  const pendingTriageCount = state.portalSubmissions.filter(
+    (s) => s.status === 'PENDENTE_TRIAGEM' || s.status === 'EM_REVISAO'
+  ).length;
 
   const roleButtons: { role: Role; label: string; icon: React.ReactNode }[] = [
     { role: 'ALUNO', label: 'Aluno', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -145,6 +149,23 @@ export const Header: React.FC = () => {
               <span>Gestão & BYOK</span>
             </button>
           )}
+
+          <button
+            onClick={() => setActiveTab('PORTAL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              state.activeTab === 'PORTAL'
+                ? 'bg-indigo-500 text-white shadow'
+                : 'bg-slate-800/80 text-slate-200 hover:bg-slate-700'
+            }`}
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            <span>Portal & Triagem</span>
+            {pendingTriageCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-400 text-slate-950 font-bold">
+                {pendingTriageCount}
+              </span>
+            )}
+          </button>
 
           <button
             onClick={() => setActiveTab('VITRINE')}

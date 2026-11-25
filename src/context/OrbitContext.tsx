@@ -6,14 +6,22 @@ import {
   INITIAL_TURMAS,
   STAGE_META,
 } from '../data/seedData';
+import { INITIAL_PORTAL_SUBMISSIONS } from '../data/portalSeedData';
 import { PROJECT_THEME_ACCENTS } from '../habblaud/client/src/art/theme';
+import {
+  buildOrbitDemandFromSubmission,
+  PortalAnalysisInput,
+} from '../services/demandTriageService';
 import {
   AiArtifact,
   AuditLogEntry,
   Demand,
+  DemandAiAnalysis,
   HandRaisedType,
   LogicArtifact,
   OrbitState,
+  PortalSubmission,
+  PortalSubmissionStatus,
   QaArtifact,
   Role,
   StageKey,
@@ -28,6 +36,7 @@ const createInitialState = (): OrbitState => ({
   turmas: INITIAL_TURMAS,
   students: INITIAL_STUDENTS,
   demands: INITIAL_DEMANDS,
+  portalSubmissions: INITIAL_PORTAL_SUBMISSIONS,
   auditLogs: INITIAL_AUDIT_LOGS,
   geminiApiKey: '',
   highContrast: false,
@@ -89,6 +98,9 @@ function loadState(): OrbitState {
       turmas: parsed.turmas?.length ? parsed.turmas : fallback.turmas,
       students: parsed.students?.length ? parsed.students : fallback.students,
       demands: rawDemands.map(migrateDemandScreens),
+      portalSubmissions: parsed.portalSubmissions?.length
+        ? parsed.portalSubmissions
+        : fallback.portalSubmissions,
       auditLogs: parsed.auditLogs ?? fallback.auditLogs,
     };
   } catch {
@@ -133,6 +145,17 @@ interface OrbitContextValue {
   }) => void;
   setGeminiApiKey: (key: string) => void;
   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+  submitPortalDemand: (input: PortalAnalysisInput, analysis: DemandAiAnalysis) => PortalSubmission;
+  updatePortalSubmissionAnalysis: (submissionId: string, analysis: DemandAiAnalysis) => void;
+  updatePortalSubmissionStatus: (submissionId: string, status: PortalSubmissionStatus) => void;
+  requestSubmissionClarification: (submissionId: string, message: string) => void;
+  replyToSubmissionClarification: (
+    submissionId: string,
+    replyMessage: string,
+    updatedAnalysis?: DemandAiAnalysis
+  ) => void;
+  approveAndPublishSubmission: (submissionId: string) => Demand | null;
+  resetPortalDemoData: () => void;
 }
 
 const OrbitContext = createContext<OrbitContextValue | null>(null);
@@ -711,6 +734,196 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }));
   };
 
+  const submitPortalDemand = (
+    input: PortalAnalysisInput,
+    analysis: DemandAiAnalysis
+  ): PortalSubmission => {
+    const num = 105 + state.portalSubmissions.length;
+    const protocol = `SMED-2026-${String(num).padStart(4, '0')}`;
+    const now = new Date().toISOString();
+    const newSub: PortalSubmission = {
+      id: `psub-${Date.now().toString(36)}`,
+      protocol,
+      requesterName: input.requesterName,
+      requesterRole: input.requesterRole,
+      organization: input.organization,
+      organizationType: input.organizationType,
+      title: input.title,
+      problemDescription: input.problemDescription,
+      targetAudienceAndImpact: input.targetAudienceAndImpact,
+      urgency: input.urgency,
+      status: 'PENDENTE_TRIAGEM',
+      createdAt: now,
+      updatedAt: now,
+      analysis,
+      clarifications: [],
+    };
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: [newSub, ...prev.portalSubmissions],
+    }));
+    pushToast(
+      `Demanda enviada! Protocolo ${protocol}`,
+      'A IA analisou sua solicitação e a encaminhou para triagem no CEMI 2.',
+      'success'
+    );
+    return newSub;
+  };
+
+  const updatePortalSubmissionAnalysis = (
+    submissionId: string,
+    analysis: DemandAiAnalysis
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.id === submissionId
+          ? { ...s, analysis, updatedAt: new Date().toISOString() }
+          : s
+      ),
+    }));
+    pushToast('Análise atualizada!', 'As alterações do Mentor foram salvas na demanda.', 'info');
+  };
+
+  const updatePortalSubmissionStatus = (
+    submissionId: string,
+    status: PortalSubmissionStatus
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.id === submissionId
+          ? { ...s, status, updatedAt: new Date().toISOString() }
+          : s
+      ),
+    }));
+  };
+
+  const requestSubmissionClarification = (submissionId: string, message: string) => {
+    const clean = message.trim();
+    if (!clean) return;
+    const now = new Date().toISOString();
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.id === submissionId
+          ? {
+              ...s,
+              status: 'AJUSTE_SOLICITADO',
+              updatedAt: now,
+              clarifications: [
+                ...s.clarifications,
+                {
+                  id: `clr-${Date.now().toString(36)}`,
+                  author: 'MENTOR',
+                  message: clean,
+                  timestamp: now,
+                },
+              ],
+            }
+          : s
+      ),
+    }));
+    pushToast(
+      'Solicitação de esclarecimento registrada!',
+      'O solicitante já pode responder diretamente na Consulta de Protocolo.',
+      'warning'
+    );
+  };
+
+  const replyToSubmissionClarification = (
+    submissionId: string,
+    replyMessage: string,
+    updatedAnalysis?: DemandAiAnalysis
+  ) => {
+    const clean = replyMessage.trim();
+    if (!clean) return;
+    const now = new Date().toISOString();
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.id === submissionId
+          ? {
+              ...s,
+              status: 'EM_REVISAO',
+              updatedAt: now,
+              analysis: updatedAnalysis ?? s.analysis,
+              clarifications: [
+                ...s.clarifications,
+                {
+                  id: `clr-${Date.now().toString(36)}`,
+                  author: 'SOLICITANTE',
+                  message: clean,
+                  timestamp: now,
+                },
+              ],
+            }
+          : s
+      ),
+    }));
+    pushToast(
+      'Resposta enviada ao CEMI 2!',
+      'Seu protocolo retornou para revisão do Mentor.',
+      'success'
+    );
+  };
+
+  const approveAndPublishSubmission = (submissionId: string): Demand | null => {
+    const sub = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!sub) return null;
+    if (sub.analysis.viabilityStatus === 'FORA_DE_ESCOPO_HARDWARE') {
+      pushToast(
+        'Adaptação necessária antes de publicar',
+        'Aceite a versão 100% digital ou solicite esclarecimento ao solicitante.',
+        'warning'
+      );
+      return null;
+    }
+
+    const existing = sub.linkedDemandId
+      ? state.demands.find((d) => d.id === sub.linkedDemandId)
+      : undefined;
+    const built = existing ?? buildOrbitDemandFromSubmission(sub);
+    const now = new Date().toISOString();
+
+    setState((prev) => {
+      const alreadyExists = prev.demands.some((d) => d.id === built.id);
+      return {
+        ...prev,
+        demands: alreadyExists ? prev.demands : [built, ...prev.demands],
+        portalSubmissions: prev.portalSubmissions.map((s) =>
+          s.id === submissionId
+            ? {
+                ...s,
+                status: 'APROVADA_ORBIT',
+                linkedDemandId: built.id,
+                updatedAt: now,
+              }
+            : s
+        ),
+      };
+    });
+
+    pushToast(
+      `Publicado no Orbit Conecta: ${built.shortName}!`,
+      'A nova sala já aparece no escritório 2.5D e na Sala de Demandas.',
+      'success'
+    );
+    return built;
+  };
+
+  const resetPortalDemoData = () => {
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: INITIAL_PORTAL_SUBMISSIONS,
+    }));
+    pushToast(
+      'Exemplos do Portal restaurados!',
+      'Os protocolos de demonstração de Cianorte foram recarregados.',
+      'info'
+    );
+  };
+
   return (
     <OrbitContext.Provider
       value={{
@@ -743,6 +956,13 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createDemand,
         setGeminiApiKey,
         addAuditLog,
+        submitPortalDemand,
+        updatePortalSubmissionAnalysis,
+        updatePortalSubmissionStatus,
+        requestSubmissionClarification,
+        replyToSubmissionClarification,
+        approveAndPublishSubmission,
+        resetPortalDemoData,
       }}
     >
       {children}
