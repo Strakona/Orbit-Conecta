@@ -222,6 +222,7 @@ interface OrbitContextValue {
   confirmDeliveryReceipt: (submissionId: string, rating: number, comment: string) => void;
   resetPortalDemoData: () => void;
   createStudent: (input: { name: string; turmaId: string; pin?: string }) => Student;
+  createStudentsBulk: (input: { names: string[]; turmaId: string }) => Student[];
   regenerateStudentPin: (studentId: string) => string;
   deleteStudent: (studentId: string) => void;
   createStaffMember: (input: {
@@ -1339,6 +1340,94 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newStudent;
   };
 
+  const createStudentsBulk = (input: { names: string[]; turmaId: string }): Student[] => {
+    const existingInTurma = new Set(
+      state.students
+        .filter((s) => s.turmaId === input.turmaId)
+        .map((s) => s.name.trim().toLowerCase())
+    );
+    const seenInput = new Set<string>();
+    const cleanNames: string[] = [];
+    let skippedCount = 0;
+
+    input.names.forEach((raw) => {
+      const cleaned = raw
+        .replace(/^\s*(\d+[\.\)\-]|[-•*])\s+/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!cleaned) return;
+      const key = cleaned.toLowerCase();
+      if (existingInTurma.has(key) || seenInput.has(key)) {
+        skippedCount += 1;
+        return;
+      }
+      seenInput.add(key);
+      cleanNames.push(cleaned);
+    });
+
+    if (cleanNames.length === 0) {
+      pushToast(
+        'Nenhum novo estudante para importar',
+        skippedCount > 0
+          ? `${skippedCount} ${skippedCount === 1 ? 'nome já existia' : 'nomes já existiam'} nessa turma.`
+          : 'Cole ao menos um nome válido na lista.',
+        'warning'
+      );
+      return [];
+    }
+
+    const existingNums = state.students
+      .map((s) => {
+        const m = /^ORB-(\d+)$/i.exec(s.badgeCode.trim());
+        return m ? Number(m[1]) : 0;
+      })
+      .filter((n) => !Number.isNaN(n));
+    let nextNum = (existingNums.length ? Math.max(...existingNums) : 0) + 1;
+    const baseTime = Date.now().toString(36);
+    const startIdx = state.students.length;
+
+    const created: Student[] = cleanNames.map((name, i) => {
+      const badgeCode = `ORB-${String(nextNum).padStart(2, '0')}`;
+      nextNum += 1;
+      const pin = String(Math.floor(1000 + Math.random() * 9000));
+      const uuid = `ahsd-cemi2-${Math.random().toString(16).slice(2, 6)}`;
+      const avatar = AVATAR_PRESETS[(startIdx + i) % AVATAR_PRESETS.length];
+      return {
+        id: `stu-${baseTime}-${i}`,
+        uuid,
+        badgeCode,
+        name,
+        turmaId: input.turmaId,
+        pin,
+        avatar,
+        location: 'LOUNGE',
+        activityBubble: '☕ Lounge',
+        handRaised: null,
+        badges: [],
+      };
+    });
+
+    setState((prev) => ({ ...prev, students: [...prev.students, ...created] }));
+    created.forEach((stu, i) => {
+      void syncStudentToFirestore(stu, startIdx + i);
+    });
+
+    const firstBadge = created[0].badgeCode;
+    const lastBadge = created[created.length - 1].badgeCode;
+    const badgeRange = created.length === 1 ? firstBadge : `${firstBadge} a ${lastBadge}`;
+    const skippedNote =
+      skippedCount > 0
+        ? ` · ${skippedCount} ${skippedCount === 1 ? 'duplicado ignorado' : 'duplicados ignorados'}`
+        : '';
+
+    pushToast(
+      `${created.length} ${created.length === 1 ? 'crachá criado' : 'crachás criados'} (${badgeRange})!`,
+      `PINs gerados automaticamente e prontos para impressão.${skippedNote}`,
+      'success'
+    );
+    return created;
+  };
+
   const regenerateStudentPin = (studentId: string): string => {
     const newPin = String(Math.floor(1000 + Math.random() * 9000));
     const idx = state.students.findIndex((s) => s.id === studentId);
@@ -1450,6 +1539,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         confirmDeliveryReceipt,
         resetPortalDemoData,
         createStudent,
+        createStudentsBulk,
         regenerateStudentPin,
         deleteStudent,
         createStaffMember,

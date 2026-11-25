@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  BadgeCheck,
   Eye,
   EyeOff,
   FileSearch,
   KeyRound,
   PlusCircle,
   Printer,
-  RefreshCw,
   Settings,
   ShieldCheck,
   Trash2,
-  UserPlus,
   Users,
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
@@ -19,7 +16,7 @@ import { STAGE_META, TUTOR_PERSONAS } from '../data/seedData';
 import { StageKey } from '../types';
 import { isDemoMode } from '../utils/demoMode';
 import { BadgePrintModal } from './BadgePrintModal';
-import { PixelAvatar } from './PixelAvatar';
+import { StudentBadgeManager } from './StudentBadgeManager';
 
 const ALL_STAGES: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
@@ -29,9 +26,6 @@ export const CoordinatorPanel: React.FC = () => {
     syncStatus,
     createDemand,
     setGeminiApiKey,
-    createStudent,
-    regenerateStudentPin,
-    deleteStudent,
     createStaffMember,
     deleteStaffMember,
     purgeProductionDemoData,
@@ -57,10 +51,7 @@ export const CoordinatorPanel: React.FC = () => {
   // Audit filter
   const [auditFilter, setAuditFilter] = useState('');
 
-  // Student & Badge Management
-  const [newStuName, setNewStuName] = useState('');
-  const [newStuTurmaId, setNewStuTurmaId] = useState(state.turmas[0]?.id ?? 'turma-1');
-  const [newStuPin, setNewStuPin] = useState('');
+  // Print Modal State
   const [badgeTurmaFilter, setBadgeTurmaFilter] = useState('ALL');
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [printSingleStudentId, setPrintSingleStudentId] = useState<string | null>(null);
@@ -103,22 +94,6 @@ export const CoordinatorPanel: React.FC = () => {
       log.tutorReply.toLowerCase().includes(q)
     );
   });
-
-  const filteredStudents = state.students.filter(
-    (s) => badgeTurmaFilter === 'ALL' || s.turmaId === badgeTurmaFilter
-  );
-
-  const handleCreateStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStuName.trim()) return;
-    createStudent({
-      name: newStuName.trim(),
-      turmaId: newStuTurmaId,
-      pin: newStuPin.trim() || undefined,
-    });
-    setNewStuName('');
-    setNewStuPin('');
-  };
 
   const handleCreateStaff = (e: React.FormEvent) => {
     e.preventDefault();
@@ -424,174 +399,15 @@ export const CoordinatorPanel: React.FC = () => {
 
       {/* Gestão Completa de Estudantes, Crachás & Equipe */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Students & Badges Management */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
-                <BadgeCheck className="w-5 h-5 text-sky-600" />
-                <span>Gestão de Estudantes & Crachás (CEMI 2)</span>
-              </h3>
-              <p className="text-xs text-slate-600">
-                Cadastre alunos por turma para gerar automaticamente o crachá <code>ORB-XX</code>, PIN e QR Code.
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={state.students.length === 0}
-              onClick={() => {
-                setPrintSingleStudentId(null);
-                setPrintModalOpen(true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimir Folha A4</span>
-            </button>
-          </div>
-
-          <form
-            onSubmit={handleCreateStudent}
-            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end"
-          >
-            <div className="sm:col-span-5">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Nome do Estudante *
-              </label>
-              <input
-                required
-                value={newStuName}
-                onChange={(e) => setNewStuName(e.target.value)}
-                placeholder="Ex.: Clara Nogueira"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
-              />
-            </div>
-
-            <div className="sm:col-span-3">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">Turma</label>
-              <select
-                value={newStuTurmaId}
-                onChange={(e) => setNewStuTurmaId(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs"
-              >
-                {state.turmas.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                PIN (opc.)
-              </label>
-              <input
-                value={newStuPin}
-                maxLength={4}
-                onChange={(e) => setNewStuPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="Auto"
-                className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-mono"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="sm:col-span-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Criar</span>
-            </button>
-          </form>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-slate-700">
-              Crachás cadastrados ({filteredStudents.length})
-            </span>
-            <select
-              value={badgeTurmaFilter}
-              onChange={(e) => setBadgeTurmaFilter(e.target.value)}
-              className="rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
-            >
-              <option value="ALL">Todas as Turmas</option>
-              {state.turmas.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-            {filteredStudents.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center text-xs text-slate-500">
-                Nenhum estudante cadastrado nesta seleção ainda. Use o formulário acima para gerar o
-                primeiro crachá (<code>ORB-01</code>).
-              </div>
-            ) : (
-              filteredStudents.map((stu) => {
-                const turma = state.turmas.find((t) => t.id === stu.turmaId);
-                return (
-                  <div
-                    key={stu.id}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <PixelAvatar
-                        name={stu.name}
-                        config={stu.avatar}
-                        size={32}
-                        showBadgeTag={false}
-                      />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 truncate">{stu.name}</div>
-                        <div className="text-[11px] text-slate-500">
-                          {turma?.name} ·{' '}
-                          <span className="font-mono font-bold text-sky-700">{stu.badgeCode}</span> ·
-                          PIN <span className="font-mono font-bold text-amber-800">{stu.pin}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        title="Imprimir crachá individual"
-                        onClick={() => {
-                          setPrintSingleStudentId(stu.id);
-                          setPrintModalOpen(true);
-                        }}
-                        className="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 border border-slate-300 text-[11px] font-semibold text-slate-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Printer className="w-3 h-3" />
-                        <span>Crachá</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        title="Gerar novo PIN aleatório"
-                        onClick={() => regenerateStudentPin(stu.id)}
-                        className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 text-[11px] font-semibold text-slate-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>PIN</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        title="Remover estudante"
-                        onClick={() => deleteStudent(stu.id)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <StudentBadgeManager
+          canManageSensitive={true}
+          className="lg:col-span-7"
+          onPrintBadges={(singleId, turmaFilter) => {
+            setBadgeTurmaFilter(turmaFilter);
+            setPrintSingleStudentId(singleId);
+            setPrintModalOpen(true);
+          }}
+        />
 
         {/* Staff Access Codes Management */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">

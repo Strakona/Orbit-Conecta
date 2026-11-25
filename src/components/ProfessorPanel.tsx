@@ -19,7 +19,9 @@ import {
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META } from '../data/seedData';
 import { Demand, StageKey } from '../types';
+import { BadgePrintModal } from './BadgePrintModal';
 import { PixelAvatar } from './PixelAvatar';
+import { StudentBadgeManager } from './StudentBadgeManager';
 import { UnifiedPreview } from './UnifiedPreview';
 
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
@@ -45,6 +47,9 @@ export const ProfessorPanel: React.FC = () => {
   const [badgeInput, setBadgeInput] = useState('');
   const [deliveryModalDemand, setDeliveryModalDemand] = useState<Demand | null>(null);
   const [copiedWhat, setCopiedWhat] = useState<'APP' | 'PROTO' | 'WA' | null>(null);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printSingleStudentId, setPrintSingleStudentId] = useState<string | null>(null);
+  const [printTurmaFilter, setPrintTurmaFilter] = useState<string>('ALL');
 
   const turmaStudents = useMemo(
     () => state.students.filter((s) => s.turmaId === selectedTurmaId),
@@ -68,7 +73,8 @@ export const ProfessorPanel: React.FC = () => {
   });
 
   return (
-    <div className="space-y-5">
+    <>
+    <div className="no-print space-y-5">
       {/* Header Banner */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -388,6 +394,17 @@ export const ProfessorPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* Student & Badge Registration + Bulk Import (no PIN reset / delete) */}
+      <StudentBadgeManager
+        canManageSensitive={false}
+        defaultTurmaId={selectedTurmaId}
+        onPrintBadges={(singleId, turmaFilter) => {
+          setPrintTurmaFilter(turmaFilter);
+          setPrintSingleStudentId(singleId);
+          setPrintModalOpen(true);
+        }}
+      />
+
       {/* Pedagogical Evaluation Modal */}
       {inspectTarget && (
         <div
@@ -653,5 +670,15 @@ export const ProfessorPanel: React.FC = () => {
         </div>
       )}
     </div>
+
+    <BadgePrintModal
+      isOpen={printModalOpen}
+      onClose={() => setPrintModalOpen(false)}
+      students={state.students}
+      turmas={state.turmas}
+      initialFilterTurmaId={printTurmaFilter}
+      singleStudentId={printSingleStudentId}
+    />
+    </>
   );
 };
