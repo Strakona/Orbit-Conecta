@@ -59,4 +59,15 @@
   .no-print {
     display: none !important;
   }
+
+  .badge-print-root {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
 }

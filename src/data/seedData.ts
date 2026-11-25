@@ -1,4 +1,13 @@
-import { AuditLogEntry, Demand, StageKey, Student, Turma, TutorPersona } from '../types';
+import {
+  AuditLogEntry,
+  AvatarConfig,
+  Demand,
+  StaffMember,
+  StageKey,
+  Student,
+  Turma,
+  TutorPersona,
+} from '../types';
 
 export const STAGE_META: Record<
   StageKey,
@@ -95,6 +104,32 @@ export const TUTOR_PERSONAS: TutorPersona[] = [
     specialty: 'Roteiros de teste, acessibilidade e validação ponta a ponta',
     focusPrompt:
       'Incentive o estudante a criar cenários de teste reais, verificar botões, mensagens de erro e clareza das respostas antes da entrega oficial.',
+  },
+];
+
+export const AVATAR_PRESETS: AvatarConfig[] = [
+  { skin: '#F4C29F', hair: '#2B1B17', shirt: '#2563EB', accent: '#38BDF8', hairStyle: 'curto', accessory: 'oculos' },
+  { skin: '#E0A379', hair: '#5A2D0C', shirt: '#0EA5E9', accent: '#FACC15', hairStyle: 'longo', accessory: 'fone' },
+  { skin: '#8D5524', hair: '#111827', shirt: '#7C3AED', accent: '#A78BFA', hairStyle: 'cacheado', accessory: 'nenhum' },
+  { skin: '#F9D6BC', hair: '#9A3412', shirt: '#10B981', accent: '#34D399', hairStyle: 'longo', accessory: 'oculos' },
+  { skin: '#C68642', hair: '#1E293B', shirt: '#F59E0B', accent: '#FDE68A', hairStyle: 'moicano', accessory: 'bone' },
+  { skin: '#E5B887', hair: '#451A03', shirt: '#14B8A6', accent: '#5EEAD4', hairStyle: 'curto', accessory: 'nenhum' },
+];
+
+export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
+  {
+    id: 'staff-prof-1',
+    name: 'Prof. Mentor CEMI 2',
+    role: 'PROFESSOR',
+    accessCode: 'CEMI2026',
+    createdAt: '2026-11-18T08:00:00Z',
+  },
+  {
+    id: 'staff-coord-1',
+    name: 'Coordenação SMED Cianorte',
+    role: 'COORDENADOR',
+    accessCode: 'SMED2026',
+    createdAt: '2026-11-18T08:00:00Z',
   },
 ];
 

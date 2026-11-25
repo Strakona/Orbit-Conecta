@@ -187,21 +187,27 @@ export const Header: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             title={
-              syncStatus === 'ONLINE_FIREBASE'
+              demo
+                ? 'Sandbox isolado no navegador — não altera o banco real no Firebase'
+                : syncStatus === 'ONLINE_FIREBASE'
                 ? 'Sincronizado em tempo real com Firebase Firestore'
                 : syncStatus === 'CONNECTING'
                 ? 'Conectando ao Firebase Firestore...'
                 : 'Modo offline local (localStorage)'
             }
             className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
-              syncStatus === 'ONLINE_FIREBASE'
+              demo
+                ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                : syncStatus === 'ONLINE_FIREBASE'
                 ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200'
                 : syncStatus === 'CONNECTING'
                 ? 'bg-sky-500/15 border-sky-400/40 text-sky-200'
                 : 'bg-slate-800/90 border-slate-700 text-slate-300'
             }`}
           >
-            {syncStatus === 'ONLINE_FIREBASE'
+            {demo
+              ? '🟡 Sandbox Demo (?demo=1)'
+              : syncStatus === 'ONLINE_FIREBASE'
               ? '🟢 Firebase Online'
               : syncStatus === 'CONNECTING'
               ? '🔵 Conectando...'
@@ -244,7 +250,7 @@ export const Header: React.FC = () => {
             <Contrast className="w-4 h-4" />
           </button>
 
-          {(demo || session.role === 'COORDENADOR') && (
+          {demo && (
             <button
               onClick={resetDemoData}
               title="Resetar Dados Demo"

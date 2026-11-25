@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import {
   Award,
+  Check,
   CheckCircle2,
+  Copy,
+  ExternalLink,
   Eye,
   Flower2,
   GraduationCap,
@@ -9,6 +12,7 @@ import {
   MessageSquareWarning,
   Presentation,
   RotateCcw,
+  Share2,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -29,6 +33,7 @@ export const ProfessorPanel: React.FC = () => {
     activateTestMode,
     deliverDemandOfficially,
     openDemandRoom,
+    pushToast,
   } = useOrbit();
 
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>(state.turmas[0]?.id ?? 'turma-1');
@@ -38,6 +43,8 @@ export const ProfessorPanel: React.FC = () => {
   } | null>(null);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [badgeInput, setBadgeInput] = useState('');
+  const [deliveryModalDemand, setDeliveryModalDemand] = useState<Demand | null>(null);
+  const [copiedWhat, setCopiedWhat] = useState<'APP' | 'PROTO' | 'WA' | null>(null);
 
   const turmaStudents = useMemo(
     () => state.students.filter((s) => s.turmaId === selectedTurmaId),
@@ -315,12 +322,37 @@ export const ProfessorPanel: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
                   {isDelivered ? (
-                    <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                      <Flower2 className="w-4 h-4" />
-                      Entrega Oficial concluída (Jardim da Inovação ativo)
-                    </span>
+                    (() => {
+                      const linkedSub = state.portalSubmissions.find(
+                        (s) => s.linkedDemandId === demand.id
+                      );
+                      return (
+                        <div className="w-full flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs font-bold text-emerald-700 flex flex-wrap items-center gap-1.5">
+                            <Flower2 className="w-4 h-4 shrink-0" />
+                            <span>Entrega Oficial concluída</span>
+                            {linkedSub?.deliveryConfirmation && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[10px]">
+                                ✅ Recebido ({'⭐'.repeat(linkedSub.deliveryConfirmation.rating)})
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeliveryModalDemand(demand);
+                              setCopiedWhat(null);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                            <span>Link de Entrega / WhatsApp</span>
+                          </button>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <>
                       <button
@@ -337,7 +369,11 @@ export const ProfessorPanel: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => deliverDemandOfficially(demand.id)}
+                        onClick={() => {
+                          deliverDemandOfficially(demand.id);
+                          setDeliveryModalDemand({ ...demand, status: 'ENTREGUE' });
+                          setCopiedWhat(null);
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
@@ -462,6 +498,158 @@ export const ProfessorPanel: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Celebratory Official Delivery & Requester Link Modal */}
+      {deliveryModalDemand && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Entrega Oficial ao Solicitante"
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          {(() => {
+            const origin =
+              typeof window !== 'undefined'
+                ? window.location.origin
+                : 'https://orbit-conecta.vercel.app';
+            const linkedSub = state.portalSubmissions.find(
+              (s) => s.linkedDemandId === deliveryModalDemand.id
+            );
+            const appUrl = `${origin}/?app=${encodeURIComponent(deliveryModalDemand.id)}`;
+            const protoUrl = linkedSub
+              ? `${origin}/?protocolo=${encodeURIComponent(linkedSub.protocol)}`
+              : '';
+            const waText = [
+              `Olá${linkedSub ? `, ${linkedSub.requesterName}` : ''}! 🌸`,
+              `A solução digital "${deliveryModalDemand.title}" solicitada para ${deliveryModalDemand.secretaria} foi concluída pelas Turmas AH/SD no Laboratório Orbit Conecta (CEMI 2 / SMED Cianorte)!`,
+              '',
+              `🔗 Acesse o aplicativo pronto: ${appUrl}`,
+              ...(protoUrl ? [`📋 Acompanhe e confirme o recebimento no protocolo ${linkedSub?.protocol}: ${protoUrl}`] : []),
+            ].join('\n');
+
+            const copyText = async (what: 'APP' | 'PROTO' | 'WA', text: string) => {
+              try {
+                await navigator.clipboard.writeText(text);
+                setCopiedWhat(what);
+                pushToast('Copiado para a área de transferência!', undefined, 'success');
+              } catch {
+                pushToast('Copie o texto manualmente', text, 'info');
+              }
+            };
+
+            return (
+              <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-emerald-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-emerald-800 to-[#0B132B] text-white px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Flower2 className="w-6 h-6 text-emerald-300" />
+                    <div>
+                      <h3 className="font-display font-bold text-base">
+                        Entrega Oficial Concluída!
+                      </h3>
+                      <p className="text-[11px] text-emerald-200">
+                        {deliveryModalDemand.title}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDeliveryModalDemand(null)}
+                    aria-label="Fechar modal de entrega"
+                    className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-4 text-xs">
+                  {linkedSub && (
+                    <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950">
+                      <strong>Solicitante vinculado:</strong> {linkedSub.requesterName} (
+                      {linkedSub.organization}) · Protocolo <code>{linkedSub.protocol}</code>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-700">
+                      Link Exclusivo do Aplicativo Pronto:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        readOnly
+                        value={appUrl}
+                        className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-[11px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => copyText('APP', appUrl)}
+                        className="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedWhat === 'APP' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedWhat === 'APP' ? 'Copiado' : 'Copiar'}</span>
+                      </button>
+                      <a
+                        href={appUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800"
+                        title="Abrir em nova aba"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {protoUrl && (
+                    <div className="space-y-1.5">
+                      <label className="block font-bold text-slate-700">
+                        Link Direto do Protocolo (para confirmação de recebimento):
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly
+                          value={protoUrl}
+                          className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-[11px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyText('PROTO', protoUrl)}
+                          className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedWhat === 'PROTO' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedWhat === 'PROTO' ? 'Copiado' : 'Copiar'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-700">
+                      Mensagem Pronta para Enviar ao Solicitante (WhatsApp / E-mail):
+                    </label>
+                    <textarea
+                      readOnly
+                      rows={5}
+                      value={waText}
+                      className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => copyText('WA', waText)}
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedWhat === 'WA' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>
+                        {copiedWhat === 'WA'
+                          ? 'Mensagem de Entrega Copiada!'
+                          : 'Copiar Mensagem de Entrega (WhatsApp)'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

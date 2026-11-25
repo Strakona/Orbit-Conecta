@@ -34,7 +34,8 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
     TUTOR_PERSONAS.find((p) => p.id === personaId) ?? TUTOR_PERSONAS[0];
   const actorUuid =
     state.session?.role === 'ALUNO'
-      ? (state.students.find((s) => s.id === state.session?.studentId) ?? state.students[0]).uuid
+      ? (state.students.find((s) => s.id === state.session?.studentId) ?? state.students[0])
+          ?.uuid ?? 'ahsd-cemi2-anon'
       : state.session?.role === 'PROFESSOR'
       ? 'mentor-cemi2-preview'
       : 'coord-smed-preview';

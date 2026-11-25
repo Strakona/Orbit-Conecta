@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, RotateCcw, ShieldCheck, X } from 'lucide-react';
 import { useOrbit } from '../../context/OrbitContext';
+import { isDemoMode } from '../../utils/demoMode';
 
 interface PortalByokModalProps {
   isOpen: boolean;
@@ -89,34 +90,36 @@ export const PortalByokModal: React.FC<PortalByokModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
-              <span>Restaurar Dados de Demonstração</span>
+          {isDemoMode() && (
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+                <span>Restaurar Dados de Demonstração</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetPortalDemoData();
+                    onClose();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800 cursor-pointer"
+                >
+                  Resetar Apenas Portal de Demandas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetDemoData();
+                    onClose();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer"
+                >
+                  Resetar Tudo (Orbit + Portal)
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  resetPortalDemoData();
-                  onClose();
-                }}
-                className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800 cursor-pointer"
-              >
-                Resetar Apenas Portal de Demandas
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  resetDemoData();
-                  onClose();
-                }}
-                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer"
-              >
-                Resetar Tudo (Orbit + Portal)
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />

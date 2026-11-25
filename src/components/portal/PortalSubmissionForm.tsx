@@ -3,7 +3,9 @@ import {
   AlertTriangle,
   ArrowRight,
   Building2,
+  Check,
   CheckCircle2,
+  Copy,
   Loader2,
   School,
   Search,
@@ -13,6 +15,7 @@ import { useOrbit } from '../../context/OrbitContext';
 import { CIANORTE_ORGANIZATIONS, STATION_THEME } from '../../data/portalSeedData';
 import { analyzePortalDemand } from '../../services/demandTriageService';
 import { PortalSubmission, StageKey, UrgencyLevel } from '../../types';
+import { isDemoMode } from '../../utils/demoMode';
 
 interface PortalSubmissionFormProps {
   onGoToProtocol: (protocol: string) => void;
@@ -23,7 +26,7 @@ const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTE
 export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
   onGoToProtocol,
 }) => {
-  const { state, submitPortalDemand } = useOrbit();
+  const { state, submitPortalDemand, pushToast } = useOrbit();
 
   const [requesterName, setRequesterName] = useState('');
   const [requesterRole, setRequesterRole] = useState('');
@@ -36,6 +39,7 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState<PortalSubmission | null>(null);
+  const [copiedProtocolLink, setCopiedProtocolLink] = useState(false);
 
   const handleOrgSelect = (label: string) => {
     setOrganization(label);
@@ -218,15 +222,42 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
             Enviar Outra Demanda
           </button>
 
-          <button
-            type="button"
-            onClick={() => onGoToProtocol(submittedRecord.protocol)}
-            className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
-          >
-            <Search className="w-4 h-4" />
-            <span>Acompanhar Protocolo {submittedRecord.protocol}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const url = `${window.location.origin}/?protocolo=${encodeURIComponent(
+                  submittedRecord.protocol
+                )}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setCopiedProtocolLink(true);
+                  pushToast('Link de acompanhamento copiado!', url, 'success');
+                  window.setTimeout(() => setCopiedProtocolLink(false), 2500);
+                } catch {
+                  pushToast('Link do protocolo', url, 'info');
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              {copiedProtocolLink ? (
+                <Check className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              <span>{copiedProtocolLink ? 'Link Copiado!' : 'Copiar Link de Acompanhamento'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onGoToProtocol(submittedRecord.protocol)}
+              className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
+            >
+              <Search className="w-4 h-4" />
+              <span>Acompanhar Protocolo {submittedRecord.protocol}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -250,22 +281,24 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => fillExample('ESCOLA_DIGITAL')}
-            className="px-3 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 text-fuchsia-900 text-[11px] font-semibold cursor-pointer"
-          >
-            ⚡ Exemplo: Escola (Reforço)
-          </button>
-          <button
-            type="button"
-            onClick={() => fillExample('HARDWARE_TESTE')}
-            className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-[11px] font-semibold cursor-pointer"
-          >
-            🔧 Exemplo: Pedido c/ Hardware
-          </button>
-        </div>
+        {isDemoMode() && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => fillExample('ESCOLA_DIGITAL')}
+              className="px-3 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 text-fuchsia-900 text-[11px] font-semibold cursor-pointer"
+            >
+              ⚡ Exemplo: Escola (Reforço)
+            </button>
+            <button
+              type="button"
+              onClick={() => fillExample('HARDWARE_TESTE')}
+              className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-[11px] font-semibold cursor-pointer"
+            >
+              🔧 Exemplo: Pedido c/ Hardware
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Guided Form */}

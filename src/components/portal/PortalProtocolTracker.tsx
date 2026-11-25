@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Eye,
+  Flower2,
   MessageCircle,
   Search,
   Send,
   Sparkles,
+  Star,
   X,
 } from 'lucide-react';
 import { useOrbit } from '../../context/OrbitContext';
@@ -85,7 +89,7 @@ function statusPill(sub: PortalSubmission, linkedDemand?: Demand): { label: stri
 export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
   initialProtocol,
 }) => {
-  const { state, replyToSubmissionClarification } = useOrbit();
+  const { state, replyToSubmissionClarification, confirmDeliveryReceipt, pushToast } = useOrbit();
   const [query, setQuery] = useState(initialProtocol ?? '');
   const [selectedId, setSelectedId] = useState<string>(() => {
     if (initialProtocol) {
@@ -98,6 +102,18 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
   });
   const [replyText, setReplyText] = useState('');
   const [previewDemand, setPreviewDemand] = useState<Demand | null>(null);
+  const [rating, setRating] = useState(5);
+  const [receiptComment, setReceiptComment] = useState('');
+  const [copiedAppLink, setCopiedAppLink] = useState(false);
+
+  useEffect(() => {
+    if (!initialProtocol) return;
+    setQuery(initialProtocol);
+    const match = state.portalSubmissions.find(
+      (s) => s.protocol.toLowerCase() === initialProtocol.toLowerCase()
+    );
+    if (match) setSelectedId(match.id);
+  }, [initialProtocol, state.portalSubmissions]);
 
   const filtered = state.portalSubmissions.filter((s) => {
     const q = query.trim().toLowerCase();
@@ -219,16 +235,37 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                 </p>
               </div>
 
-              {linkedDemand &&
-                (linkedDemand.status === 'ENTREGUE' || linkedDemand.status === 'MODO_TESTE') && (
-                  <button
-                    onClick={() => setPreviewDemand(linkedDemand)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Testar Solução no Simulador</span>
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = `${window.location.origin}/?protocolo=${encodeURIComponent(
+                      activeSubmission.protocol
+                    )}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      pushToast('Link do protocolo copiado!', url, 'info');
+                    } catch {
+                      pushToast('Link do protocolo', url, 'info');
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Link</span>
+                </button>
+
+                {linkedDemand &&
+                  (linkedDemand.status === 'ENTREGUE' || linkedDemand.status === 'MODO_TESTE') && (
+                    <button
+                      onClick={() => setPreviewDemand(linkedDemand)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Abrir Solução</span>
+                    </button>
+                  )}
+              </div>
             </div>
 
             {/* 5-Stage Synchronized Stepper */}
@@ -276,6 +313,108 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                 {activeSubmission.analysis.friendlySummary}
               </p>
             </div>
+
+            {/* Official Delivery Card + Requester Confirmation */}
+            {linkedDemand?.status === 'ENTREGUE' && (
+              <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-display font-bold text-sm text-emerald-950 flex items-center gap-2">
+                    <Flower2 className="w-4 h-4 text-emerald-600" />
+                    <span>🎉 Solução Oficial Entregue à Comunidade!</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDemand(linkedDemand)}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Usar / Testar Aplicativo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = `${window.location.origin}/?app=${encodeURIComponent(
+                          linkedDemand.id
+                        )}`;
+                        try {
+                          await navigator.clipboard.writeText(url);
+                          setCopiedAppLink(true);
+                          pushToast('Link direto do app copiado!', url, 'success');
+                          window.setTimeout(() => setCopiedAppLink(false), 2500);
+                        } catch {
+                          pushToast('Link direto do app', url, 'info');
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedAppLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedAppLink ? 'Copiado!' : 'Link Direto do App'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {activeSubmission.deliveryConfirmation ? (
+                  <div className="p-3 rounded-xl bg-white border border-emerald-200 text-xs text-slate-800 space-y-1">
+                    <div className="font-bold text-emerald-800">
+                      ✅ Recebimento confirmado por {activeSubmission.requesterName} ·{' '}
+                      {'⭐'.repeat(activeSubmission.deliveryConfirmation.rating)} (
+                      {activeSubmission.deliveryConfirmation.rating}/5)
+                    </div>
+                    {activeSubmission.deliveryConfirmation.comment && (
+                      <p className="italic text-slate-600">
+                        "{activeSubmission.deliveryConfirmation.comment}"
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      confirmDeliveryReceipt(activeSubmission.id, rating, receiptComment);
+                      setReceiptComment('');
+                    }}
+                    className="p-3 rounded-xl bg-white border border-emerald-200 space-y-2.5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        Confirmar Recebimento & Avaliar Entrega:
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setRating(n)}
+                            className={`p-1 rounded border cursor-pointer ${
+                              n <= rating
+                                ? 'bg-amber-100 border-amber-300 text-amber-600'
+                                : 'bg-slate-50 border-slate-200 text-slate-300'
+                            }`}
+                          >
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        value={receiptComment}
+                        onChange={(e) => setReceiptComment(e.target.value)}
+                        placeholder="Comentário opcional sobre a solução entregue..."
+                        className="flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-xs"
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer"
+                      >
+                        Confirmar Recebimento
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
 
             {/* Clarification Dialogue Loop */}
             {(activeSubmission.clarifications.length > 0 ||

@@ -174,35 +174,63 @@ function buildStarterArtifactsFromSummary(params: {
   faqAnswer?: string;
 }): Demand['artifacts'] {
   const fieldId = 'entrada_principal';
+  const mainFields = [
+    {
+      id: fieldId,
+      label: params.fieldLabel || 'Descreva ou informe o dado principal',
+      type: 'text' as const,
+      placeholder: params.fieldPlaceholder || 'Digite aqui...',
+    },
+    {
+      id: 'unidade_atendimento',
+      label: 'Unidade / Setor de referência',
+      type: 'select' as const,
+      options: [params.organization, 'Atendimento Central SMED', 'Outro setor municipal'],
+    },
+  ];
+  const infoCards = [
+    {
+      id: 'info-1',
+      title: params.infoTitle || params.organization,
+      description:
+        params.infoDesc ||
+        'Aplicativo web do Laboratório de Inovação CEMI 2 — SMED Cianorte.',
+      icon: 'Sparkles',
+    },
+  ];
+  const appTitle = params.shortName ? `${params.shortName} · Cianorte` : params.title;
+  const appSubtitle = `Solução digital desenvolvida para ${params.organization}`;
+  const ctaLabel = params.ctaLabel || 'Analisar Solicitação';
+
   return {
     ui: {
-      appTitle: params.shortName ? `${params.shortName} · Cianorte` : params.title,
-      appSubtitle: `Solução digital desenvolvida para ${params.organization}`,
+      appTitle,
+      appSubtitle,
       primaryColor: params.primaryColor || '#0284C7',
       accentColor: params.accentColor || '#10B981',
-      ctaLabel: params.ctaLabel || 'Analisar Solicitação',
-      fields: [
+      navigationStyle: 'tabs',
+      ctaLabel,
+      fields: mainFields,
+      infoCards,
+      screens: [
         {
-          id: fieldId,
-          label: params.fieldLabel || 'Descreva ou informe o dado principal',
-          type: 'text',
-          placeholder: params.fieldPlaceholder || 'Digite aqui...',
+          id: 'scr-inicio',
+          name: 'Início',
+          title: appTitle,
+          subtitle: appSubtitle,
+          fields: mainFields,
+          infoCards: [],
+          ctaLabel,
         },
         {
-          id: 'unidade_atendimento',
-          label: 'Unidade / Setor de referência',
-          type: 'select',
-          options: [params.organization, 'Atendimento Central SMED', 'Outro setor municipal'],
-        },
-      ],
-      infoCards: [
-        {
-          id: 'info-1',
-          title: params.infoTitle || params.organization,
-          description:
-            params.infoDesc ||
-            'Aplicativo web do Laboratório de Inovação CEMI 2 — SMED Cianorte.',
-          icon: 'Sparkles',
+          id: 'scr-info',
+          name: 'Orientações',
+          title: `Sobre — ${params.shortName || params.title}`,
+          subtitle: `Informações oficiais de ${params.organization}`,
+          fields: [],
+          infoCards,
+          ctaLabel: 'Voltar ao Início',
+          ctaTargetScreenId: 'scr-inicio',
         },
       ],
     },

@@ -33,7 +33,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
   const isStudent = session?.role === 'ALUNO';
 
   const [staffSelectedStudentId, setStaffSelectedStudentId] = useState<string>(
-    session?.studentId ?? state.students[1]?.id ?? state.students[0].id
+    session?.studentId ?? state.students[1]?.id ?? state.students[0]?.id ?? ''
   );
 
   const deliveredDemands = state.demands.filter((d) => d.status === 'ENTREGUE');
@@ -113,6 +113,18 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
       </div>
 
       {/* Delivered Projects Gallery */}
+      {deliveredDemands.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-2 shadow-sm">
+          <Flower2 className="w-8 h-8 text-emerald-500 mx-auto" />
+          <h3 className="font-display font-bold text-base text-slate-900">
+            Nenhuma solução entregue oficialmente ainda
+          </h3>
+          <p className="text-xs text-slate-600 max-w-md mx-auto">
+            Assim que as Turmas AH/SD do CEMI 2 concluírem uma demanda e o Professor Mentor realizar a
+            Entrega Oficial, o aplicativo aparecerá aqui para uso público.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {deliveredDemands.map((demand) => {
           const ownStages =
@@ -215,6 +227,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
           );
         })}
       </div>
+      )}
 
       {/* Individual Card ONLY in Authenticated Views; LGPD Notice in Public View */}
       {publicView ? (
@@ -226,6 +239,10 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
             individuais ("Eu Ajudei a Fazer") ficam disponíveis apenas dentro do ambiente autenticado
             do CEMI 2.
           </span>
+        </div>
+      ) : !selectedStudent ? (
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm text-center text-xs text-slate-600">
+          Nenhum estudante cadastrado ainda para exibir o cartão individual "Eu Ajudei a Fazer".
         </div>
       ) : (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">

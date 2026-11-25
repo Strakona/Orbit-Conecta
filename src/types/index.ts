@@ -244,6 +244,12 @@ export interface ClarificationEntry {
   timestamp: string;
 }
 
+export interface DeliveryConfirmation {
+  confirmedAt: string;
+  rating: number;
+  comment: string;
+}
+
 export interface PortalSubmission {
   id: string;
   protocol: string;
@@ -261,6 +267,7 @@ export interface PortalSubmission {
   analysis: DemandAiAnalysis;
   clarifications: ClarificationEntry[];
   linkedDemandId?: string;
+  deliveryConfirmation?: DeliveryConfirmation;
 }
 
 export type SyncStatus = 'OFFLINE_LOCAL' | 'CONNECTING' | 'ONLINE_FIREBASE';
@@ -275,10 +282,19 @@ export interface AnonymousPresence {
   look: 'm' | 'f';
 }
 
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: 'PROFESSOR' | 'COORDENADOR';
+  accessCode: string;
+  createdAt: string;
+}
+
 export interface OrbitState {
   session: SessionUser | null;
   turmas: Turma[];
   students: Student[];
+  staffMembers: StaffMember[];
   demands: Demand[];
   portalSubmissions: PortalSubmission[];
   auditLogs: AuditLogEntry[];

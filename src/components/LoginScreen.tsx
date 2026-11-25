@@ -17,10 +17,14 @@ import { Role } from '../types';
 import { isDemoMode, STAFF_PASSCODES } from '../utils/demoMode';
 
 interface LoginScreenProps {
+  initialBadgeCode?: string;
   onBackToPublicPortal?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  initialBadgeCode = '',
+  onBackToPublicPortal,
+}) => {
   const {
     state,
     loginAsStudentByBadge,
@@ -30,7 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
   const demo = isDemoMode();
 
   const [selectedRole, setSelectedRole] = useState<Role>('ALUNO');
-  const [badgeCode, setBadgeCode] = useState('');
+  const [badgeCode, setBadgeCode] = useState(initialBadgeCode.toUpperCase());
   const [pin, setPin] = useState('');
   const [studentError, setStudentError] = useState('');
 
@@ -71,10 +75,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
     }
   };
 
-  const handleStaffSubmit = (e: React.FormEvent, role: Exclude<Role, 'ALUNO'>) => {
+  const handleStaffSubmit = async (e: React.FormEvent, role: Exclude<Role, 'ALUNO'>) => {
     e.preventDefault();
     setStaffError('');
-    if (!loginAsStaffWithCode(role, staffPasscode)) {
+    const ok = await loginAsStaffWithCode(role, staffPasscode);
+    if (!ok) {
       setStaffError('Código institucional inválido.');
     }
   };
@@ -208,6 +213,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
                 <p className="text-xs text-slate-600 mt-0.5">
                   Digite o código do seu crachá individual e o PIN secreto de 4 dígitos.
                 </p>
+                {initialBadgeCode && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 border border-sky-300 text-sky-900 text-xs font-bold">
+                    <BadgeCheck className="w-3.5 h-3.5 text-sky-700" />
+                    <span>Crachá {initialBadgeCode.toUpperCase()} lido via QR — digite seu PIN</span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">

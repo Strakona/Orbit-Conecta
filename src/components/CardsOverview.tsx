@@ -38,6 +38,17 @@ export const CardsOverview: React.FC<CardsOverviewProps> = ({
         </button>
       </div>
 
+      {state.demands.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
+          <p className="text-sm font-semibold text-slate-800">
+            Nenhuma demanda publicada no laboratório ainda.
+          </p>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Envie uma demanda pelo Portal Público e aprove-a na Triagem, ou cadastre uma nova
+            demanda diretamente no Painel da Coordenação.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {state.demands.map((demand) => {
           const roomStudents = state.students.filter((s) => s.location === demand.id);
@@ -166,6 +177,7 @@ export const CardsOverview: React.FC<CardsOverviewProps> = ({
           );
         })}
       </div>
+      )}
     </div>
   );
 };

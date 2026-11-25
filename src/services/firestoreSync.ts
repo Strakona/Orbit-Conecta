@@ -1,7 +1,7 @@
 import {
   collection,
+  deleteDoc,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -14,6 +14,7 @@ import { INITIAL_PORTAL_SUBMISSIONS } from '../data/portalSeedData';
 import {
   INITIAL_AUDIT_LOGS,
   INITIAL_DEMANDS,
+  INITIAL_STAFF_MEMBERS,
   INITIAL_STUDENTS,
   INITIAL_TURMAS,
 } from '../data/seedData';
@@ -23,10 +24,12 @@ import {
   AuditLogEntry,
   Demand,
   PortalSubmission,
+  StaffMember,
   Student,
   SyncStatus,
   Turma,
 } from '../types';
+import { isDemoMode } from '../utils/demoMode';
 
 function stripUndefined<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -44,62 +47,85 @@ export function toAnonymousPresence(student: Student, idx = 0): AnonymousPresenc
   };
 }
 
-let seedPromise: Promise<void> | null = null;
+let turmasSeedPromise: Promise<void> | null = null;
 
 /**
- * Auto-seed inteligente: se o Firestore ainda estiver vazio (sem meta/seed_v1),
- * grava os dados iniciais de Cianorte (demandas, protocolos, turmas, crachás e presença anônima).
+ * Em produção limpa (/), garante apenas a estrutura base das 4 Turmas AH/SD vazias,
+ * caso a coleção `turmas` ainda esteja vazia. Nunca grava alunos, equipe ou demandas demo.
  */
-export async function ensureInitialFirestoreSeed(): Promise<void> {
+export async function ensureProductionTurmasInFirestore(): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
-  if (seedPromise) return seedPromise;
+  if (turmasSeedPromise) return turmasSeedPromise;
 
-  seedPromise = (async () => {
+  turmasSeedPromise = (async () => {
     try {
       await ensureFirebaseAuthSession();
-      const markerRef = doc(firestore, 'meta', 'seed_v1');
-      const markerSnap = await getDoc(markerRef);
-      if (markerSnap.exists()) return;
+      const snap = await getDocs(collection(firestore, 'turmas'));
+      if (!snap.empty) return;
 
       const batch = writeBatch(firestore);
-
-      INITIAL_DEMANDS.forEach((d) => {
-        batch.set(doc(firestore, 'demands', d.id), stripUndefined(d));
-      });
-
-      INITIAL_PORTAL_SUBMISSIONS.forEach((p) => {
-        batch.set(doc(firestore, 'portalSubmissions', p.id), stripUndefined(p));
-      });
-
-      INITIAL_STUDENTS.forEach((s, idx) => {
-        const presence = toAnonymousPresence(s, idx);
-        batch.set(doc(firestore, 'presence', presence.id), stripUndefined(presence));
-      });
-
       INITIAL_TURMAS.forEach((t) => {
         batch.set(doc(firestore, 'turmas', t.id), stripUndefined(t));
       });
-      INITIAL_STUDENTS.forEach((s) => {
-        batch.set(doc(firestore, 'students', s.id), stripUndefined(s));
-      });
-      INITIAL_AUDIT_LOGS.forEach((a) => {
-        batch.set(doc(firestore, 'auditLogs', a.id), stripUndefined(a));
-      });
-
-      batch.set(markerRef, { seededAt: new Date().toISOString(), version: 1 });
       await batch.commit();
     } catch {
-      // Caso regras bloqueiem escrita anônima antes do login, ignorar sem travar o app
+      // ignore offline or rule errors
     }
   })();
 
-  return seedPromise;
+  return turmasSeedPromise;
+}
+
+/**
+ * Remove do Firestore todos os documentos conhecidos do conjunto de demonstração (?demo=1),
+ * caso tenham sido semeados por versões anteriores.
+ */
+export async function purgeDemoDocsFromFirestore(): Promise<number> {
+  if (isDemoMode()) return 0;
+  const firestore = db;
+  if (!firestore) return 0;
+
+  try {
+    await ensureFirebaseAuthSession();
+    const batch = writeBatch(firestore);
+    let count = 0;
+
+    INITIAL_DEMANDS.forEach((d) => {
+      batch.delete(doc(firestore, 'demands', d.id));
+      count += 1;
+    });
+    INITIAL_PORTAL_SUBMISSIONS.forEach((p) => {
+      batch.delete(doc(firestore, 'portalSubmissions', p.id));
+      count += 1;
+    });
+    INITIAL_STUDENTS.forEach((s) => {
+      batch.delete(doc(firestore, 'students', s.id));
+      batch.delete(doc(firestore, 'presence', s.uuid));
+      count += 2;
+    });
+    INITIAL_STAFF_MEMBERS.forEach((m) => {
+      batch.delete(doc(firestore, 'staffMembers', m.id));
+      count += 1;
+    });
+    INITIAL_AUDIT_LOGS.forEach((a) => {
+      batch.delete(doc(firestore, 'auditLogs', a.id));
+      count += 1;
+    });
+    batch.delete(doc(firestore, 'meta', 'seed_v1'));
+    count += 1;
+
+    await batch.commit();
+    return count;
+  } catch {
+    return 0;
+  }
 }
 
 /**
  * Listeners públicos (LGPD): escutam APENAS demandas, protocolos e presença anonimizada.
- * Nenhum nome de aluno, PIN ou crachá é trafegado aqui.
+ * No modo ?demo=1 nunca conecta ao Firebase para manter isolamento total.
  */
 export function subscribePublicFirestore(handlers: {
   onDemands: (demands: Demand[]) => void;
@@ -108,7 +134,7 @@ export function subscribePublicFirestore(handlers: {
   onStatus: (status: SyncStatus) => void;
 }): () => void {
   const firestore = db;
-  if (!firestore) {
+  if (isDemoMode() || !firestore) {
     handlers.onStatus('OFFLINE_LOCAL');
     return () => {};
   }
@@ -121,7 +147,6 @@ export function subscribePublicFirestore(handlers: {
       collection(firestore, 'demands'),
       (snap) => {
         handlers.onStatus('ONLINE_FIREBASE');
-        if (snap.empty) return;
         const list = snap.docs.map((d) => d.data() as Demand);
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         handlers.onDemands(list);
@@ -134,7 +159,6 @@ export function subscribePublicFirestore(handlers: {
     onSnapshot(
       collection(firestore, 'portalSubmissions'),
       (snap) => {
-        if (snap.empty) return;
         const list = snap.docs.map((d) => d.data() as PortalSubmission);
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         handlers.onPortalSubmissions(list);
@@ -149,7 +173,6 @@ export function subscribePublicFirestore(handlers: {
     onSnapshot(
       collection(firestore, 'presence'),
       (snap) => {
-        if (snap.empty) return;
         handlers.onPresence(snap.docs.map((d) => d.data() as AnonymousPresence));
       },
       () => {
@@ -169,10 +192,11 @@ export function subscribePublicFirestore(handlers: {
 export function subscribePrivateFirestore(handlers: {
   onTurmas: (turmas: Turma[]) => void;
   onStudents: (students: Student[]) => void;
+  onStaffMembers: (staff: StaffMember[]) => void;
   onAuditLogs: (logs: AuditLogEntry[]) => void;
 }): () => void {
   const firestore = db;
-  if (!firestore) return () => {};
+  if (isDemoMode() || !firestore) return () => {};
   const unsubs: Unsubscribe[] = [];
 
   unsubs.push(
@@ -186,7 +210,6 @@ export function subscribePrivateFirestore(handlers: {
 
   unsubs.push(
     onSnapshot(collection(firestore, 'students'), (snap) => {
-      if (snap.empty) return;
       const list = snap.docs.map((d) => d.data() as Student);
       list.sort((a, b) => a.badgeCode.localeCompare(b.badgeCode));
       handlers.onStudents(list);
@@ -194,8 +217,15 @@ export function subscribePrivateFirestore(handlers: {
   );
 
   unsubs.push(
+    onSnapshot(collection(firestore, 'staffMembers'), (snap) => {
+      const list = snap.docs.map((d) => d.data() as StaffMember);
+      list.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      handlers.onStaffMembers(list);
+    })
+  );
+
+  unsubs.push(
     onSnapshot(collection(firestore, 'auditLogs'), (snap) => {
-      if (snap.empty) return;
       const list = snap.docs.map((d) => d.data() as AuditLogEntry);
       list.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
       handlers.onAuditLogs(list);
@@ -214,6 +244,7 @@ export async function verifyStudentBadgeInFirestore(
   badgeCode: string,
   pin: string
 ): Promise<Student | null> {
+  if (isDemoMode()) return null;
   const firestore = db;
   if (!firestore) return null;
   try {
@@ -230,6 +261,7 @@ export async function verifyStudentBadgeInFirestore(
 }
 
 export async function syncDemandToFirestore(demand: Demand): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {
@@ -240,6 +272,7 @@ export async function syncDemandToFirestore(demand: Demand): Promise<void> {
 }
 
 export async function syncStudentToFirestore(student: Student, idx = 0): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {
@@ -257,6 +290,7 @@ export async function syncStudentToFirestore(student: Student, idx = 0): Promise
 export async function syncPortalSubmissionToFirestore(
   sub: PortalSubmission
 ): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {
@@ -266,7 +300,75 @@ export async function syncPortalSubmissionToFirestore(
   }
 }
 
+export async function verifyStaffAccessInFirestore(
+  role: 'PROFESSOR' | 'COORDENADOR',
+  accessCode: string
+): Promise<StaffMember | null> {
+  if (isDemoMode()) return null;
+  const firestore = db;
+  if (!firestore) return null;
+  try {
+    await ensureFirebaseAuthSession();
+    const normalized = accessCode.trim().toUpperCase();
+    const q = query(
+      collection(firestore, 'staffMembers'),
+      where('role', '==', role)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    for (const docSnap of snap.docs) {
+      const m = docSnap.data() as StaffMember;
+      if (m.accessCode.trim().toUpperCase() === normalized) {
+        return m;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteStudentFromFirestore(student: Student): Promise<void> {
+  if (isDemoMode()) return;
+  const firestore = db;
+  if (!firestore) return;
+  try {
+    await ensureFirebaseAuthSession();
+    await Promise.all([
+      deleteDoc(doc(firestore, 'students', student.id)),
+      deleteDoc(doc(firestore, 'presence', student.uuid)),
+    ]);
+  } catch {
+    // ignore
+  }
+}
+
+export async function syncStaffMemberToFirestore(member: StaffMember): Promise<void> {
+  if (isDemoMode()) return;
+  const firestore = db;
+  if (!firestore) return;
+  try {
+    await ensureFirebaseAuthSession();
+    await setDoc(doc(firestore, 'staffMembers', member.id), stripUndefined(member));
+  } catch {
+    // ignore
+  }
+}
+
+export async function deleteStaffMemberFromFirestore(staffId: string): Promise<void> {
+  if (isDemoMode()) return;
+  const firestore = db;
+  if (!firestore) return;
+  try {
+    await ensureFirebaseAuthSession();
+    await deleteDoc(doc(firestore, 'staffMembers', staffId));
+  } catch {
+    // ignore
+  }
+}
+
 export async function syncAuditLogToFirestore(entry: AuditLogEntry): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {
@@ -278,6 +380,7 @@ export async function syncAuditLogToFirestore(entry: AuditLogEntry): Promise<voi
 }
 
 export async function resetAllFirestoreDemo(): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {
@@ -293,6 +396,9 @@ export async function resetAllFirestoreDemo(): Promise<void> {
       const presence = toAnonymousPresence(s, idx);
       batch.set(doc(firestore, 'presence', presence.id), stripUndefined(presence));
     });
+    INITIAL_STAFF_MEMBERS.forEach((m) =>
+      batch.set(doc(firestore, 'staffMembers', m.id), stripUndefined(m))
+    );
     INITIAL_AUDIT_LOGS.forEach((a) =>
       batch.set(doc(firestore, 'auditLogs', a.id), stripUndefined(a))
     );
@@ -303,6 +409,7 @@ export async function resetAllFirestoreDemo(): Promise<void> {
 }
 
 export async function resetPortalFirestoreDemo(): Promise<void> {
+  if (isDemoMode()) return;
   const firestore = db;
   if (!firestore) return;
   try {

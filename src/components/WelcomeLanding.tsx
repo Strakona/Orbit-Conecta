@@ -113,14 +113,18 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
           )}
           <span
             className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border backdrop-blur-md ${
-              syncStatus === 'ONLINE_FIREBASE'
+              demo
+                ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
+                : syncStatus === 'ONLINE_FIREBASE'
                 ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
                 : syncStatus === 'CONNECTING'
                 ? 'bg-sky-500/20 border-sky-400/40 text-sky-200'
                 : 'bg-slate-900/75 border-white/15 text-slate-300'
             }`}
           >
-            {syncStatus === 'ONLINE_FIREBASE'
+            {demo
+              ? '🟡 Sandbox Demo Local'
+              : syncStatus === 'ONLINE_FIREBASE'
               ? '🟢 Nuvem Firebase Online'
               : syncStatus === 'CONNECTING'
               ? '🔵 Conectando Firebase...'

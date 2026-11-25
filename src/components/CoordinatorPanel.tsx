@@ -1,22 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import {
+  BadgeCheck,
   Eye,
   EyeOff,
   FileSearch,
   KeyRound,
   PlusCircle,
+  Printer,
+  RefreshCw,
   Settings,
   ShieldCheck,
+  Trash2,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META, TUTOR_PERSONAS } from '../data/seedData';
 import { StageKey } from '../types';
+import { isDemoMode } from '../utils/demoMode';
+import { BadgePrintModal } from './BadgePrintModal';
+import { PixelAvatar } from './PixelAvatar';
 
 const ALL_STAGES: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
 export const CoordinatorPanel: React.FC = () => {
-  const { state, syncStatus, createDemand, setGeminiApiKey } = useOrbit();
+  const {
+    state,
+    syncStatus,
+    createDemand,
+    setGeminiApiKey,
+    createStudent,
+    regenerateStudentPin,
+    deleteStudent,
+    createStaffMember,
+    deleteStaffMember,
+    purgeProductionDemoData,
+  } = useOrbit();
+  const demo = isDemoMode();
+  const [purgingDemo, setPurgingDemo] = useState(false);
 
   // New Demand Form
   const [title, setTitle] = useState('');
@@ -35,6 +56,20 @@ export const CoordinatorPanel: React.FC = () => {
 
   // Audit filter
   const [auditFilter, setAuditFilter] = useState('');
+
+  // Student & Badge Management
+  const [newStuName, setNewStuName] = useState('');
+  const [newStuTurmaId, setNewStuTurmaId] = useState(state.turmas[0]?.id ?? 'turma-1');
+  const [newStuPin, setNewStuPin] = useState('');
+  const [badgeTurmaFilter, setBadgeTurmaFilter] = useState('ALL');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printSingleStudentId, setPrintSingleStudentId] = useState<string | null>(null);
+
+  // Staff Access Management
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState<'PROFESSOR' | 'COORDENADOR'>('PROFESSOR');
+  const [newStaffCode, setNewStaffCode] = useState('');
+  const [showStaffCodes, setShowStaffCodes] = useState(false);
 
   const handleCreateDemand = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,8 +104,37 @@ export const CoordinatorPanel: React.FC = () => {
     );
   });
 
+  const filteredStudents = state.students.filter(
+    (s) => badgeTurmaFilter === 'ALL' || s.turmaId === badgeTurmaFilter
+  );
+
+  const handleCreateStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStuName.trim()) return;
+    createStudent({
+      name: newStuName.trim(),
+      turmaId: newStuTurmaId,
+      pin: newStuPin.trim() || undefined,
+    });
+    setNewStuName('');
+    setNewStuPin('');
+  };
+
+  const handleCreateStaff = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim() || !newStaffCode.trim()) return;
+    createStaffMember({
+      name: newStaffName.trim(),
+      role: newStaffRole,
+      accessCode: newStaffCode.trim().toUpperCase(),
+    });
+    setNewStaffName('');
+    setNewStaffCode('');
+  };
+
   return (
-    <div className="space-y-5">
+    <>
+    <div className="no-print space-y-5">
       {/* Header */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -87,21 +151,46 @@ export const CoordinatorPanel: React.FC = () => {
           </div>
         </div>
 
-        <span
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
-            syncStatus === 'ONLINE_FIREBASE'
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+        <div className="flex flex-wrap items-center gap-2">
+          {!demo && syncStatus === 'ONLINE_FIREBASE' && (
+            <button
+              type="button"
+              disabled={purgingDemo}
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    'Remover eventuais dados de demonstração (alunos ORB-01..10, demandas de exemplo e equipe demo) do Firestore de produção?'
+                  )
+                ) {
+                  return;
+                }
+                setPurgingDemo(true);
+                await purgeProductionDemoData();
+                setPurgingDemo(false);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{purgingDemo ? 'Limpando...' : 'Limpar Dados Demo do Firestore'}</span>
+            </button>
+          )}
+
+          <span
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+              syncStatus === 'ONLINE_FIREBASE'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                : syncStatus === 'CONNECTING'
+                ? 'bg-sky-50 border-sky-300 text-sky-800'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}
+          >
+            {syncStatus === 'ONLINE_FIREBASE'
+              ? '🟢 Firebase Firestore Online (Tempo Real)'
               : syncStatus === 'CONNECTING'
-              ? 'bg-sky-50 border-sky-300 text-sky-800'
-              : 'bg-amber-50 border-amber-300 text-amber-900'
-          }`}
-        >
-          {syncStatus === 'ONLINE_FIREBASE'
-            ? '🟢 Firebase Firestore Online (Tempo Real)'
-            : syncStatus === 'CONNECTING'
-            ? '🔵 Conectando ao Firestore...'
-            : '🟡 Modo Local (Configure .env para Firebase)'}
-        </span>
+              ? '🔵 Conectando ao Firestore...'
+              : '🟡 Modo Local (Configure .env para Firebase)'}
+          </span>
+        </div>
       </div>
 
       {/* Top Grid: Create Demand + BYOK */}
@@ -311,26 +400,318 @@ export const CoordinatorPanel: React.FC = () => {
               })}
             </div>
 
-            {/* Internal Student Badge Directory (Coordinator Only) */}
-            <div className="pt-3 border-t border-slate-200 space-y-2">
-              <div className="text-xs font-bold text-slate-800">
-                Crachás de Acesso (Uso Interno CEMI 2)
-              </div>
-              <div className="max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1">
-                {state.students.map((stu) => (
-                  <div
-                    key={stu.id}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px]"
-                  >
-                    <span className="font-semibold text-slate-800 truncate">{stu.name}</span>
-                    <span className="font-mono font-bold text-sky-700 shrink-0 ml-2">
-                      {stu.badgeCode} · PIN {stu.pin}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {/* Internal Student Badge Summary */}
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-slate-700">
+                Total de crachás ativos: <strong>{state.students.length}</strong>
+              </span>
+              <button
+                type="button"
+                disabled={state.students.length === 0}
+                onClick={() => {
+                  setPrintSingleStudentId(null);
+                  setPrintModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimir Crachás (A4)</span>
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Gestão Completa de Estudantes, Crachás & Equipe */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Students & Badges Management */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
+                <BadgeCheck className="w-5 h-5 text-sky-600" />
+                <span>Gestão de Estudantes & Crachás (CEMI 2)</span>
+              </h3>
+              <p className="text-xs text-slate-600">
+                Cadastre alunos por turma para gerar automaticamente o crachá <code>ORB-XX</code>, PIN e QR Code.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={state.students.length === 0}
+              onClick={() => {
+                setPrintSingleStudentId(null);
+                setPrintModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir Folha A4</span>
+            </button>
+          </div>
+
+          <form
+            onSubmit={handleCreateStudent}
+            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end"
+          >
+            <div className="sm:col-span-5">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                Nome do Estudante *
+              </label>
+              <input
+                required
+                value={newStuName}
+                onChange={(e) => setNewStuName(e.target.value)}
+                placeholder="Ex.: Clara Nogueira"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">Turma</label>
+              <select
+                value={newStuTurmaId}
+                onChange={(e) => setNewStuTurmaId(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs"
+              >
+                {state.turmas.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                PIN (opc.)
+              </label>
+              <input
+                value={newStuPin}
+                maxLength={4}
+                onChange={(e) => setNewStuPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="Auto"
+                className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-mono"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="sm:col-span-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Criar</span>
+            </button>
+          </form>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-slate-700">
+              Crachás cadastrados ({filteredStudents.length})
+            </span>
+            <select
+              value={badgeTurmaFilter}
+              onChange={(e) => setBadgeTurmaFilter(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
+            >
+              <option value="ALL">Todas as Turmas</option>
+              {state.turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+            {filteredStudents.length === 0 ? (
+              <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                Nenhum estudante cadastrado nesta seleção ainda. Use o formulário acima para gerar o
+                primeiro crachá (<code>ORB-01</code>).
+              </div>
+            ) : (
+              filteredStudents.map((stu) => {
+                const turma = state.turmas.find((t) => t.id === stu.turmaId);
+                return (
+                  <div
+                    key={stu.id}
+                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <PixelAvatar
+                        name={stu.name}
+                        config={stu.avatar}
+                        size={32}
+                        showBadgeTag={false}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 truncate">{stu.name}</div>
+                        <div className="text-[11px] text-slate-500">
+                          {turma?.name} ·{' '}
+                          <span className="font-mono font-bold text-sky-700">{stu.badgeCode}</span> ·
+                          PIN <span className="font-mono font-bold text-amber-800">{stu.pin}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        title="Imprimir crachá individual"
+                        onClick={() => {
+                          setPrintSingleStudentId(stu.id);
+                          setPrintModalOpen(true);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-sky-50 border border-slate-300 text-[11px] font-semibold text-slate-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Printer className="w-3 h-3" />
+                        <span>Crachá</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        title="Gerar novo PIN aleatório"
+                        onClick={() => regenerateStudentPin(stu.id)}
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 text-[11px] font-semibold text-slate-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>PIN</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        title="Remover estudante"
+                        onClick={() => deleteStudent(stu.id)}
+                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Staff Access Codes Management */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-emerald-600" />
+                <span>Equipe & Códigos de Acesso</span>
+              </h3>
+              <p className="text-xs text-slate-600">
+                Cadastre códigos individuais para mentores e gestores (ex.: Douglas, Jaqueline, Caio).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowStaffCodes((v) => !v)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+              title={showStaffCodes ? 'Ocultar códigos' : 'Mostrar códigos'}
+            >
+              {showStaffCodes ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <form
+            onSubmit={handleCreateStaff}
+            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                required
+                value={newStaffName}
+                onChange={(e) => setNewStaffName(e.target.value)}
+                placeholder="Nome (ex.: Jaqueline)"
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
+              />
+              <select
+                value={newStaffRole}
+                onChange={(e) =>
+                  setNewStaffRole(e.target.value as 'PROFESSOR' | 'COORDENADOR')
+                }
+                className="rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold"
+              >
+                <option value="PROFESSOR">Professor Mentor</option>
+                <option value="COORDENADOR">Coordenador SMED</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                required
+                value={newStaffCode}
+                onChange={(e) => setNewStaffCode(e.target.value.toUpperCase())}
+                placeholder="Código secreto (ex.: JAQUE26)"
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono uppercase"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Adicionar
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {state.staffMembers.length === 0 ? (
+              <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                Nenhum mentor ou gestor cadastrado ainda. Adicione códigos individuais acima (ex.:
+                Douglas, Jaqueline, Caio).
+              </div>
+            ) : (
+              state.staffMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-xs"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 truncate">{member.name}</div>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          member.role === 'COORDENADOR'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {member.role === 'COORDENADOR' ? 'Coordenador' : 'Mentor'}
+                      </span>
+                      <span className="font-mono font-bold text-slate-700">
+                        {showStaffCodes ? member.accessCode : '••••••••'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteStaffMember(member.id)}
+                    title="Remover acesso"
+                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-500">
+            {demo ? (
+              <>
+                Códigos demo ativos: Mentor <code>CEMI2026</code> · Coordenação{' '}
+                <code>SMED2026</code>.
+              </>
+            ) : (
+              <>
+                Código mestre de primeiro acesso da Coordenação sempre ativo (padrão{' '}
+                <code>SMED2026</code> ou variável <code>VITE_COORDINATOR_PIN</code>). Mentores
+                usam exclusivamente seus códigos cadastrados acima.
+              </>
+            )}
+          </p>
         </div>
       </div>
 
@@ -371,42 +752,60 @@ export const CoordinatorPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredLogs.map((log) => {
-                const persona = TUTOR_PERSONAS.find((p) => p.id === log.personaId);
-                return (
-                  <tr key={log.id} className="align-top">
-                    <td className="py-2.5 pr-3 font-mono text-[11px] text-slate-700 whitespace-nowrap">
-                      {log.studentUuid}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      <div className="font-semibold text-slate-900">{log.demandTitle}</div>
-                      <div className="text-[10px] text-slate-500">
-                        {STAGE_META[log.stageKey].shortLabel}
-                      </div>
-                    </td>
-                    <td className="py-2.5 pr-3 whitespace-nowrap text-indigo-700 font-medium">
-                      {persona?.name ?? log.personaId}
-                    </td>
-                    <td className="py-2.5 pr-3 text-slate-700 max-w-xs">{log.userMessage}</td>
-                    <td className="py-2.5 pr-3 text-slate-700 max-w-sm">{log.tutorReply}</td>
-                    <td className="py-2.5 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          log.mode === 'GEMINI_LIVE'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {log.mode === 'GEMINI_LIVE' ? 'Gemini Live' : 'Simulado'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center text-xs text-slate-500">
+                    Nenhuma interação registrada nos Tutores Socráticos ainda.
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map((log) => {
+                  const persona = TUTOR_PERSONAS.find((p) => p.id === log.personaId);
+                  return (
+                    <tr key={log.id} className="align-top">
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-slate-700 whitespace-nowrap">
+                        {log.studentUuid}
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <div className="font-semibold text-slate-900">{log.demandTitle}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {STAGE_META[log.stageKey].shortLabel}
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-3 whitespace-nowrap text-indigo-700 font-medium">
+                        {persona?.name ?? log.personaId}
+                      </td>
+                      <td className="py-2.5 pr-3 text-slate-700 max-w-xs">{log.userMessage}</td>
+                      <td className="py-2.5 pr-3 text-slate-700 max-w-sm">{log.tutorReply}</td>
+                      <td className="py-2.5 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            log.mode === 'GEMINI_LIVE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {log.mode === 'GEMINI_LIVE' ? 'Gemini Live' : 'Simulado'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <BadgePrintModal
+      isOpen={printModalOpen}
+      onClose={() => setPrintModalOpen(false)}
+      students={state.students}
+      turmas={state.turmas}
+      initialFilterTurmaId={badgeTurmaFilter}
+      singleStudentId={printSingleStudentId}
+    />
+    </>
   );
 };

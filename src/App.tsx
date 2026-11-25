@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { CardsOverview } from './components/CardsOverview';
 import { CoordinatorPanel } from './components/CoordinatorPanel';
+import { DeliveredAppView } from './components/DeliveredAppView';
 import { DemandBoardModal } from './components/DemandBoardModal';
 import { DemandRoom } from './components/DemandRoom';
 import { Header } from './components/Header';
@@ -19,8 +20,28 @@ const OrbitWorkspace: React.FC = () => {
   const { state, toasts, dismissToast } = useOrbit();
   const [boardOpen, setBoardOpen] = useState(false);
   const [auditoriumDemand, setAuditoriumDemand] = useState<Demand | null>(null);
-  const [publicScreen, setPublicScreen] = useState<'WELCOME' | 'PORTAL' | 'LOGIN'>('WELCOME');
-  const [portalInitialTab, setPortalInitialTab] = useState<PublicPortalTab>('SUBMISSION');
+  const [initialBadgeCode] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return (new URLSearchParams(window.location.search).get('cracha') ?? '').trim().toUpperCase();
+  });
+  const [initialProtocol, setInitialProtocol] = useState<string | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    const p = new URLSearchParams(window.location.search).get('protocolo')?.trim();
+    return p || undefined;
+  });
+  const [initialAppId] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return (new URLSearchParams(window.location.search).get('app') ?? '').trim();
+  });
+  const [publicScreen, setPublicScreen] = useState<'WELCOME' | 'PORTAL' | 'LOGIN' | 'APP'>(() => {
+    if (initialAppId) return 'APP';
+    if (initialProtocol) return 'PORTAL';
+    if (initialBadgeCode) return 'LOGIN';
+    return 'WELCOME';
+  });
+  const [portalInitialTab, setPortalInitialTab] = useState<PublicPortalTab>(() =>
+    initialProtocol ? 'PROTOCOL' : 'SUBMISSION'
+  );
 
   const toastPortal = (
     <div className="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
@@ -54,10 +75,34 @@ const OrbitWorkspace: React.FC = () => {
   );
 
   if (!state.session) {
+    if (publicScreen === 'APP' && initialAppId) {
+      return (
+        <>
+          <DeliveredAppView
+            demandId={initialAppId}
+            onBackHome={() => {
+              if (typeof window !== 'undefined' && window.location.search.includes('app=')) {
+                window.history.replaceState({}, '', window.location.pathname);
+              }
+              setPublicScreen('WELCOME');
+            }}
+            onOpenPortal={(protocol) => {
+              if (protocol) setInitialProtocol(protocol);
+              setPortalInitialTab('PROTOCOL');
+              setPublicScreen('PORTAL');
+            }}
+          />
+          {toastPortal}
+        </>
+      );
+    }
     if (publicScreen === 'LOGIN') {
       return (
         <>
-          <LoginScreen onBackToPublicPortal={() => setPublicScreen('WELCOME')} />
+          <LoginScreen
+            initialBadgeCode={initialBadgeCode}
+            onBackToPublicPortal={() => setPublicScreen('WELCOME')}
+          />
           {toastPortal}
         </>
       );
@@ -68,6 +113,7 @@ const OrbitWorkspace: React.FC = () => {
           <DemandPortal
             isPublicMode
             initialSubTab={portalInitialTab}
+            initialProtocol={initialProtocol}
             onExitPublicMode={() => setPublicScreen('WELCOME')}
             onOpenLabLogin={() => setPublicScreen('LOGIN')}
           />

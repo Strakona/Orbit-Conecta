@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
+  AVATAR_PRESETS,
   INITIAL_AUDIT_LOGS,
   INITIAL_DEMANDS,
+  INITIAL_STAFF_MEMBERS,
   INITIAL_STUDENTS,
   INITIAL_TURMAS,
   STAGE_META,
@@ -14,7 +16,10 @@ import {
   PortalAnalysisInput,
 } from '../services/demandTriageService';
 import {
-  ensureInitialFirestoreSeed,
+  deleteStaffMemberFromFirestore,
+  deleteStudentFromFirestore,
+  ensureProductionTurmasInFirestore,
+  purgeDemoDocsFromFirestore,
   resetAllFirestoreDemo,
   resetPortalFirestoreDemo,
   subscribePrivateFirestore,
@@ -22,8 +27,10 @@ import {
   syncAuditLogToFirestore,
   syncDemandToFirestore,
   syncPortalSubmissionToFirestore,
+  syncStaffMemberToFirestore,
   syncStudentToFirestore,
   toAnonymousPresence,
+  verifyStaffAccessInFirestore,
   verifyStudentBadgeInFirestore,
 } from '../services/firestoreSync';
 import {
@@ -39,23 +46,28 @@ import {
   PortalSubmissionStatus,
   QaArtifact,
   Role,
+  StaffMember,
   StageKey,
   Student,
   SyncStatus,
   ToastMessage,
   UiArtifact,
 } from '../types';
-import { STAFF_PASSCODES } from '../utils/demoMode';
+import { isDemoMode, STAFF_PASSCODES } from '../utils/demoMode';
 
-const STORAGE_KEY = 'orbit_conecta_state_v1';
+const PROD_STORAGE_KEY = 'orbit_conecta_prod_v1';
+const DEMO_STORAGE_KEY = 'orbit_conecta_demo_v1';
 
-const createInitialState = (): OrbitState => ({
+const getStorageKey = (): string => (isDemoMode() ? DEMO_STORAGE_KEY : PROD_STORAGE_KEY);
+
+const createInitialState = (demo = isDemoMode()): OrbitState => ({
   session: null,
   turmas: INITIAL_TURMAS,
-  students: INITIAL_STUDENTS,
-  demands: INITIAL_DEMANDS,
-  portalSubmissions: INITIAL_PORTAL_SUBMISSIONS,
-  auditLogs: INITIAL_AUDIT_LOGS,
+  students: demo ? INITIAL_STUDENTS : [],
+  staffMembers: demo ? INITIAL_STAFF_MEMBERS : [],
+  demands: demo ? INITIAL_DEMANDS : [],
+  portalSubmissions: demo ? INITIAL_PORTAL_SUBMISSIONS : [],
+  auditLogs: demo ? INITIAL_AUDIT_LOGS : [],
   geminiApiKey: '',
   highContrast: false,
   viewMode: 'MAP',
@@ -105,11 +117,26 @@ function migrateDemandScreens(demand: Demand): Demand {
 }
 
 function loadState(): OrbitState {
+  const demo = isDemoMode();
+  const fallback = createInitialState(demo);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createInitialState();
+    const raw = localStorage.getItem(getStorageKey());
+    if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<OrbitState>;
-    const fallback = createInitialState();
+
+    if (!demo) {
+      return {
+        ...fallback,
+        ...parsed,
+        turmas: parsed.turmas?.length ? parsed.turmas : fallback.turmas,
+        students: Array.isArray(parsed.students) ? parsed.students : [],
+        demands: Array.isArray(parsed.demands) ? parsed.demands.map(migrateDemandScreens) : [],
+        staffMembers: Array.isArray(parsed.staffMembers) ? parsed.staffMembers : [],
+        portalSubmissions: Array.isArray(parsed.portalSubmissions) ? parsed.portalSubmissions : [],
+        auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
+      };
+    }
+
     const rawDemands = parsed.demands?.length ? parsed.demands : fallback.demands;
     const rawStudents = parsed.students?.length ? parsed.students : fallback.students;
     return {
@@ -127,13 +154,16 @@ function loadState(): OrbitState {
         };
       }),
       demands: rawDemands.map(migrateDemandScreens),
+      staffMembers: parsed.staffMembers?.length
+        ? parsed.staffMembers
+        : fallback.staffMembers,
       portalSubmissions: parsed.portalSubmissions?.length
         ? parsed.portalSubmissions
         : fallback.portalSubmissions,
       auditLogs: parsed.auditLogs ?? fallback.auditLogs,
     };
   } catch {
-    return createInitialState();
+    return fallback;
   }
 }
 
@@ -146,7 +176,7 @@ interface OrbitContextValue {
   pushToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
   loginAsStudent: (studentId: string, pin: string) => boolean;
   loginAsStudentByBadge: (badgeCode: string, pin: string) => Promise<boolean>;
-  loginAsStaffWithCode: (role: Exclude<Role, 'ALUNO'>, passcode: string) => boolean;
+  loginAsStaffWithCode: (role: Exclude<Role, 'ALUNO'>, passcode: string) => Promise<boolean>;
   loginAsRole: (role: Exclude<Role, 'ALUNO'>) => void;
   switchDemoRole: (role: Role) => void;
   logout: () => void;
@@ -155,6 +185,7 @@ interface OrbitContextValue {
   openDemandRoom: (demandId: string | null) => void;
   toggleHighContrast: () => void;
   resetDemoData: () => void;
+  purgeProductionDemoData: () => Promise<void>;
   claimStage: (demandId: string, stageKey: StageKey, studentId?: string) => void;
   toggleStageChecklistItem: (demandId: string, stageKey: StageKey, itemId: string) => void;
   updateUiArtifact: (demandId: string, ui: UiArtifact) => void;
@@ -188,24 +219,35 @@ interface OrbitContextValue {
     updatedAnalysis?: DemandAiAnalysis
   ) => void;
   approveAndPublishSubmission: (submissionId: string) => Demand | null;
+  confirmDeliveryReceipt: (submissionId: string, rating: number, comment: string) => void;
   resetPortalDemoData: () => void;
+  createStudent: (input: { name: string; turmaId: string; pin?: string }) => Student;
+  regenerateStudentPin: (studentId: string) => string;
+  deleteStudent: (studentId: string) => void;
+  createStaffMember: (input: {
+    name: string;
+    role: 'PROFESSOR' | 'COORDENADOR';
+    accessCode: string;
+  }) => StaffMember;
+  deleteStaffMember: (staffId: string) => void;
 }
 
 const OrbitContext = createContext<OrbitContextValue | null>(null);
 
 export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const demo = isDemoMode();
   const [state, setState] = useState<OrbitState>(() => loadState());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(
-    isFirebaseConfigured ? 'CONNECTING' : 'OFFLINE_LOCAL'
+    !demo && isFirebaseConfigured ? 'CONNECTING' : 'OFFLINE_LOCAL'
   );
   const [publicPresence, setPublicPresence] = useState<AnonymousPresence[]>(() =>
-    INITIAL_STUDENTS.map((s, idx) => toAnonymousPresence(s, idx))
+    demo ? INITIAL_STUDENTS.map((s, idx) => toAnonymousPresence(s, idx)) : []
   );
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(getStorageKey(), JSON.stringify(state));
     } catch {
       // ignore storage quota errors
     }
@@ -219,14 +261,13 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [state.highContrast]);
 
-  // Public Firestore sync (demands, portalSubmissions, anonymized presence)
+  // Public Firestore sync (demands, portalSubmissions, anonymized presence) — disabled in ?demo=1
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (demo || !isFirebaseConfigured) {
       setSyncStatus('OFFLINE_LOCAL');
       return;
     }
 
-    void ensureInitialFirestoreSeed();
     const unsubscribe = subscribePublicFirestore({
       onDemands: (demands) => {
         setState((prev) => ({
@@ -244,19 +285,21 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     return unsubscribe;
-  }, []);
+  }, [demo]);
 
-  // Private Firestore sync (ONLY subscribed when authenticated inside CEMI 2)
+  // Private Firestore sync (ONLY subscribed when authenticated inside CEMI 2 on real production)
   useEffect(() => {
-    if (!isFirebaseConfigured || !state.session) return;
+    if (demo || !isFirebaseConfigured || !state.session) return;
     let active = true;
     let unsubPrivate: (() => void) | undefined;
 
     void ensureFirebaseAuthSession().then(() => {
       if (!active) return;
+      void ensureProductionTurmasInFirestore();
       unsubPrivate = subscribePrivateFirestore({
         onTurmas: (turmas) => setState((prev) => ({ ...prev, turmas })),
         onStudents: (students) => setState((prev) => ({ ...prev, students })),
+        onStaffMembers: (staffMembers) => setState((prev) => ({ ...prev, staffMembers })),
         onAuditLogs: (auditLogs) => setState((prev) => ({ ...prev, auditLogs })),
       });
     });
@@ -265,7 +308,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       active = false;
       unsubPrivate?.();
     };
-  }, [state.session?.role, state.session?.studentId]);
+  }, [demo, state.session?.role, state.session?.studentId]);
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -327,23 +370,55 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
-  const loginAsStaffWithCode = (
+  const loginAsStaffWithCode = async (
     role: Exclude<Role, 'ALUNO'>,
     passcode: string
-  ): boolean => {
-    if (passcode.trim().toUpperCase() !== STAFF_PASSCODES[role].toUpperCase()) {
-      return false;
+  ): Promise<boolean> => {
+    const clean = passcode.trim().toUpperCase();
+    if (!clean) return false;
+
+    const localMatch = state.staffMembers.find(
+      (m) => m.role === role && m.accessCode.trim().toUpperCase() === clean
+    );
+    if (localMatch) {
+      loginAsRole(role, localMatch.name);
+      return true;
     }
-    loginAsRole(role);
-    return true;
+
+    if (isFirebaseConfigured) {
+      const remoteMatch = await verifyStaffAccessInFirestore(role, clean);
+      if (remoteMatch) {
+        setState((prev) => ({
+          ...prev,
+          staffMembers: prev.staffMembers.some((m) => m.id === remoteMatch.id)
+            ? prev.staffMembers
+            : [...prev.staffMembers, remoteMatch],
+        }));
+        loginAsRole(role, remoteMatch.name);
+        return true;
+      }
+    }
+
+    if (role === 'COORDENADOR' && clean === STAFF_PASSCODES.COORDENADOR.toUpperCase()) {
+      loginAsRole(role, demo ? undefined : 'Coordenação Master (SMED)');
+      return true;
+    }
+
+    if (demo && role === 'PROFESSOR' && clean === STAFF_PASSCODES.PROFESSOR.toUpperCase()) {
+      loginAsRole(role);
+      return true;
+    }
+    return false;
   };
 
-  const loginAsRole = (role: Exclude<Role, 'ALUNO'>) => {
+  const loginAsRole = (role: Exclude<Role, 'ALUNO'>, customName?: string) => {
     setState((prev) => ({
       ...prev,
       session: {
         role,
-        name: role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (CEMI 2)' : 'Coord. Mariana (SMED)',
+        name:
+          customName ||
+          (role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (CEMI 2)' : 'Coord. Mariana (SMED)'),
       },
       activeTab: role === 'PROFESSOR' ? 'PROFESSOR' : 'COORDENADOR',
       activeDemandId: null,
@@ -358,6 +433,10 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const switchDemoRole = (role: Role) => {
     if (role === 'ALUNO') {
       const demoStudent = state.students[0];
+      if (!demoStudent) {
+        pushToast('Nenhum estudante cadastrado', 'Cadastre um crachá no Painel da Coordenação.', 'warning');
+        return;
+      }
       setState((prev) => ({
         ...prev,
         session: {
@@ -416,19 +495,52 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetDemoData = () => {
-    const fresh = createInitialState();
-    localStorage.removeItem(STORAGE_KEY);
+    if (!demo) return;
+    const fresh = createInitialState(true);
+    localStorage.removeItem(DEMO_STORAGE_KEY);
     setState({
       ...fresh,
       session: state.session,
       geminiApiKey: state.geminiApiKey,
     });
+    setPublicPresence(INITIAL_STUDENTS.map((s, idx) => toAnonymousPresence(s, idx)));
     void resetAllFirestoreDemo();
     pushToast('Dados demo restaurados!', 'Todas as demandas e avatares voltaram ao estado inicial.', 'info');
   };
 
+  const purgeProductionDemoData = async () => {
+    if (demo) return;
+    const seedDemandIds = new Set(INITIAL_DEMANDS.map((d) => d.id));
+    const seedSubIds = new Set(INITIAL_PORTAL_SUBMISSIONS.map((p) => p.id));
+    const seedStudentIds = new Set(INITIAL_STUDENTS.map((s) => s.id));
+    const seedPresenceIds = new Set(INITIAL_STUDENTS.map((s) => s.uuid));
+    const seedStaffIds = new Set(INITIAL_STAFF_MEMBERS.map((m) => m.id));
+    const seedLogIds = new Set(INITIAL_AUDIT_LOGS.map((a) => a.id));
+
+    await purgeDemoDocsFromFirestore();
+
+    setState((prev) => ({
+      ...prev,
+      demands: prev.demands.filter((d) => !seedDemandIds.has(d.id)),
+      portalSubmissions: prev.portalSubmissions.filter((s) => !seedSubIds.has(s.id)),
+      students: prev.students.filter((s) => !seedStudentIds.has(s.id)),
+      staffMembers: prev.staffMembers.filter((m) => !seedStaffIds.has(m.id)),
+      auditLogs: prev.auditLogs.filter((l) => !seedLogIds.has(l.id)),
+    }));
+    setPublicPresence((prev) => prev.filter((p) => !seedPresenceIds.has(p.uuid)));
+    pushToast(
+      'Base limpa para produção!',
+      'Todos os registros de demonstração foram removidos do Firestore e da sessão local.',
+      'success'
+    );
+  };
+
   const claimStage = (demandId: string, stageKey: StageKey, explicitStudentId?: string) => {
-    const studentId = explicitStudentId ?? state.session?.studentId ?? state.students[0].id;
+    const studentId = explicitStudentId ?? state.session?.studentId ?? state.students[0]?.id;
+    if (!studentId) {
+      pushToast('Selecione ou cadastre um estudante', 'Nenhum crachá ativo para assumir esta bancada.', 'warning');
+      return;
+    }
     const targetDemand = state.demands.find((d) => d.id === demandId);
     if (!targetDemand) return;
 
@@ -769,13 +881,22 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
     });
 
+    const nowIso = new Date().toISOString();
+    const linkedSubs = state.portalSubmissions
+      .filter((s) => s.linkedDemandId === demandId)
+      .map((s) => ({ ...s, status: 'APROVADA_ORBIT' as const, updatedAt: nowIso }));
+
     setState((prev) => ({
       ...prev,
       demands: prev.demands.map((d) => (d.id === demandId ? updatedDemand : d)),
       students: updatedStudents,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.linkedDemandId === demandId ? { ...s, status: 'APROVADA_ORBIT', updatedAt: nowIso } : s
+      ),
     }));
 
     void syncDemandToFirestore(updatedDemand);
+    linkedSubs.forEach((s) => void syncPortalSubmissionToFirestore(s));
     updatedStudents.forEach((s, idx) => {
       if (contributorIds.has(s.id) || state.students[idx]?.location === demandId) {
         void syncStudentToFirestore(s, idx);
@@ -936,7 +1057,11 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     input: PortalAnalysisInput,
     analysis: DemandAiAnalysis
   ): PortalSubmission => {
-    const num = 105 + state.portalSubmissions.length;
+    const maxNum = state.portalSubmissions.reduce((max, s) => {
+      const m = /^SMED-2026-(\d+)$/i.exec(s.protocol);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 0);
+    const num = demo ? Math.max(105, maxNum + 1) : maxNum + 1;
     const protocol = `SMED-2026-${String(num).padStart(4, '0')}`;
     const now = new Date().toISOString();
     const newSub: PortalSubmission = {
@@ -1127,7 +1252,39 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return built;
   };
 
+  const confirmDeliveryReceipt = (
+    submissionId: string,
+    rating: number,
+    comment: string
+  ) => {
+    const target = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!target) return;
+    const now = new Date().toISOString();
+    const updated: PortalSubmission = {
+      ...target,
+      updatedAt: now,
+      deliveryConfirmation: {
+        confirmedAt: now,
+        rating: Math.max(1, Math.min(5, rating)),
+        comment: comment.trim(),
+      },
+    };
+    setState((prev) => ({
+      ...prev,
+      portalSubmissions: prev.portalSubmissions.map((s) =>
+        s.id === submissionId ? updated : s
+      ),
+    }));
+    void syncPortalSubmissionToFirestore(updated);
+    pushToast(
+      '🎉 Recebimento confirmado!',
+      'Seu feedback já está visível para o Professor Mentor no CEMI 2.',
+      'success'
+    );
+  };
+
   const resetPortalDemoData = () => {
+    if (!demo) return;
     setState((prev) => ({
       ...prev,
       portalSubmissions: INITIAL_PORTAL_SUBMISSIONS,
@@ -1138,6 +1295,113 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       'Os protocolos de demonstração de Cianorte foram recarregados.',
       'info'
     );
+  };
+
+  const createStudent = (input: { name: string; turmaId: string; pin?: string }): Student => {
+    const existingNums = state.students
+      .map((s) => {
+        const m = /^ORB-(\d+)$/i.exec(s.badgeCode.trim());
+        return m ? Number(m[1]) : 0;
+      })
+      .filter((n) => !Number.isNaN(n));
+    const nextNum = (existingNums.length ? Math.max(...existingNums) : 0) + 1;
+    const badgeCode = `ORB-${String(nextNum).padStart(2, '0')}`;
+    const cleanPin = (input.pin ?? '').replace(/\D/g, '').slice(0, 4);
+    const pin =
+      cleanPin.length === 4
+        ? cleanPin
+        : String(Math.floor(1000 + Math.random() * 9000));
+    const uuid = `ahsd-cemi2-${Math.random().toString(16).slice(2, 6)}`;
+    const avatar = AVATAR_PRESETS[state.students.length % AVATAR_PRESETS.length];
+
+    const newStudent: Student = {
+      id: `stu-${Date.now().toString(36)}`,
+      uuid,
+      badgeCode,
+      name: input.name.trim(),
+      turmaId: input.turmaId,
+      pin,
+      avatar,
+      location: 'LOUNGE',
+      activityBubble: '☕ Lounge',
+      handRaised: null,
+      badges: [],
+    };
+
+    const nextStudents = [...state.students, newStudent];
+    setState((prev) => ({ ...prev, students: nextStudents }));
+    void syncStudentToFirestore(newStudent, nextStudents.length - 1);
+    pushToast(
+      `Crachá ${badgeCode} criado!`,
+      `${newStudent.name} · PIN inicial: ${pin}`,
+      'success'
+    );
+    return newStudent;
+  };
+
+  const regenerateStudentPin = (studentId: string): string => {
+    const newPin = String(Math.floor(1000 + Math.random() * 9000));
+    const idx = state.students.findIndex((s) => s.id === studentId);
+    if (idx < 0) return newPin;
+    const updated: Student = { ...state.students[idx], pin: newPin };
+    setState((prev) => ({
+      ...prev,
+      students: prev.students.map((s) => (s.id === studentId ? updated : s)),
+    }));
+    void syncStudentToFirestore(updated, idx);
+    pushToast(
+      `Novo PIN gerado para ${updated.badgeCode}`,
+      `PIN atualizado: ${newPin}`,
+      'info'
+    );
+    return newPin;
+  };
+
+  const deleteStudent = (studentId: string) => {
+    const target = state.students.find((s) => s.id === studentId);
+    if (!target) return;
+    setState((prev) => ({
+      ...prev,
+      students: prev.students.filter((s) => s.id !== studentId),
+    }));
+    void deleteStudentFromFirestore(target);
+    pushToast(`Estudante removido (${target.badgeCode})`, undefined, 'warning');
+  };
+
+  const createStaffMember = (input: {
+    name: string;
+    role: 'PROFESSOR' | 'COORDENADOR';
+    accessCode: string;
+  }): StaffMember => {
+    const newStaff: StaffMember = {
+      id: `staff-${Date.now().toString(36)}`,
+      name: input.name.trim(),
+      role: input.role,
+      accessCode: input.accessCode.trim().toUpperCase(),
+      createdAt: new Date().toISOString(),
+    };
+    setState((prev) => ({
+      ...prev,
+      staffMembers: [...prev.staffMembers, newStaff],
+    }));
+    void syncStaffMemberToFirestore(newStaff);
+    pushToast(
+      `Acesso criado para ${newStaff.name}!`,
+      `Código: ${newStaff.accessCode}`,
+      'success'
+    );
+    return newStaff;
+  };
+
+  const deleteStaffMember = (staffId: string) => {
+    const target = state.staffMembers.find((m) => m.id === staffId);
+    if (!target) return;
+    setState((prev) => ({
+      ...prev,
+      staffMembers: prev.staffMembers.filter((m) => m.id !== staffId),
+    }));
+    void deleteStaffMemberFromFirestore(staffId);
+    pushToast(`Acesso removido (${target.name})`, undefined, 'warning');
   };
 
   return (
@@ -1160,6 +1424,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         openDemandRoom,
         toggleHighContrast,
         resetDemoData,
+        purgeProductionDemoData,
         claimStage,
         toggleStageChecklistItem,
         updateUiArtifact,
@@ -1182,7 +1447,13 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         requestSubmissionClarification,
         replyToSubmissionClarification,
         approveAndPublishSubmission,
+        confirmDeliveryReceipt,
         resetPortalDemoData,
+        createStudent,
+        regenerateStudentPin,
+        deleteStudent,
+        createStaffMember,
+        deleteStaffMember,
       }}
     >
       {children}

@@ -21,6 +21,7 @@ import { PortalTriagePanel } from './PortalTriagePanel';
 interface DemandPortalProps {
   isPublicMode?: boolean;
   initialSubTab?: 'SUBMISSION' | 'PROTOCOL' | 'SHOWCASE' | 'TRIAGE';
+  initialProtocol?: string;
   onOpenLabLogin?: () => void;
   onExitPublicMode?: () => void;
 }
@@ -30,6 +31,7 @@ type PortalSubTab = 'SUBMISSION' | 'PROTOCOL' | 'SHOWCASE' | 'TRIAGE';
 export const DemandPortal: React.FC<DemandPortalProps> = ({
   isPublicMode = false,
   initialSubTab,
+  initialProtocol,
   onOpenLabLogin,
   onExitPublicMode,
 }) => {
@@ -48,9 +50,15 @@ export const DemandPortal: React.FC<DemandPortalProps> = ({
       setSubTab(initialSubTab);
     }
   }, [initialSubTab]);
-  const [trackedProtocol, setTrackedProtocol] = useState<string | undefined>(undefined);
+
+  const [trackedProtocol, setTrackedProtocol] = useState<string | undefined>(initialProtocol);
   const [byokOpen, setByokOpen] = useState(false);
 
+  useEffect(() => {
+    if (initialProtocol) {
+      setTrackedProtocol(initialProtocol);
+    }
+  }, [initialProtocol]);
   const canSeeTriage = isStaff || (demo && mentorDemoMode);
   const pendingCount = state.portalSubmissions.filter(
     (s) => s.status === 'PENDENTE_TRIAGEM' || s.status === 'EM_REVISAO'
