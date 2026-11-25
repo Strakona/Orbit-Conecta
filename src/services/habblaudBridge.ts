@@ -105,7 +105,11 @@ let snapshotRev = 1;
  * Salas entregues oficialmente ("ENTREGUE") são omitidas de `rooms` para que o Habblaud apague as luzes,
  * desmonte a sala e exiba jardins/compactação sem deixar buracos.
  */
-export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
+export function buildHabblaudSnapshot(
+  state: OrbitState,
+  options?: { anonymize?: boolean }
+): OfficeSnapshot {
+  const anonymize = Boolean(options?.anonymize);
   const now = Date.now();
   const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
   const themeMap = resolveDemandThemeMap(state.demands);
@@ -190,7 +194,7 @@ export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
           ? '✋ Precisa de ajuda do mentor'
           : '✅ Etapa pronta para avaliar'
         : actInfo.text,
-      detail: stu.handNote,
+      detail: anonymize ? undefined : stu.handNote,
       at: now - 15_000,
     };
 
@@ -204,7 +208,11 @@ export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
       id: stu.id,
       kind: 'main',
       roomId,
-      name: stu.name,
+      name: anonymize
+        ? stu.activeStage
+          ? STAGE_META[stu.activeStage].shortLabel
+          : 'Equipe CEMI 2'
+        : stu.name,
       look: idx % 2 === 0 ? 'm' : 'f',
       role: stu.activeStage ? STAGE_META[stu.activeStage].shortLabel : 'Estudante AH/SD',
       title: demand ? demand.shortName : 'Lounge / Sala de Demandas',
@@ -213,7 +221,9 @@ export function buildHabblaudSnapshot(state: OrbitState): OfficeSnapshot {
       status,
       waitingFor:
         stu.handRaised === 'AJUDA'
-          ? stu.handNote || 'Dúvida na bancada'
+          ? anonymize
+            ? 'Aguardando mentoria'
+            : stu.handNote || 'Dúvida na bancada'
           : stu.handRaised === 'AVALIACAO'
           ? 'Avaliar etapa concluída'
           : undefined,

@@ -11,6 +11,7 @@ import { DemandPortal } from './components/portal/DemandPortal';
 import { ProfessorPanel } from './components/ProfessorPanel';
 import { PublicShowcase } from './components/PublicShowcase';
 import { UnifiedPreview } from './components/UnifiedPreview';
+import { PublicPortalTab, WelcomeLanding } from './components/WelcomeLanding';
 import { OrbitProvider, useOrbit } from './context/OrbitContext';
 import { Demand } from './types';
 
@@ -18,7 +19,8 @@ const OrbitWorkspace: React.FC = () => {
   const { state, toasts, dismissToast } = useOrbit();
   const [boardOpen, setBoardOpen] = useState(false);
   const [auditoriumDemand, setAuditoriumDemand] = useState<Demand | null>(null);
-  const [labLoginOpen, setLabLoginOpen] = useState(false);
+  const [publicScreen, setPublicScreen] = useState<'WELCOME' | 'PORTAL' | 'LOGIN'>('WELCOME');
+  const [portalInitialTab, setPortalInitialTab] = useState<PublicPortalTab>('SUBMISSION');
 
   const toastPortal = (
     <div className="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
@@ -52,19 +54,35 @@ const OrbitWorkspace: React.FC = () => {
   );
 
   if (!state.session) {
-    if (labLoginOpen) {
+    if (publicScreen === 'LOGIN') {
       return (
         <>
-          <LoginScreen onBackToPublicPortal={() => setLabLoginOpen(false)} />
+          <LoginScreen onBackToPublicPortal={() => setPublicScreen('WELCOME')} />
+          {toastPortal}
+        </>
+      );
+    }
+    if (publicScreen === 'PORTAL') {
+      return (
+        <>
+          <DemandPortal
+            isPublicMode
+            initialSubTab={portalInitialTab}
+            onExitPublicMode={() => setPublicScreen('WELCOME')}
+            onOpenLabLogin={() => setPublicScreen('LOGIN')}
+          />
           {toastPortal}
         </>
       );
     }
     return (
       <>
-        <DemandPortal
-          isPublicMode
-          onOpenLabLogin={() => setLabLoginOpen(true)}
+        <WelcomeLanding
+          onEnterPortal={(tab) => {
+            setPortalInitialTab(tab);
+            setPublicScreen('PORTAL');
+          }}
+          onOpenLabLogin={() => setPublicScreen('LOGIN')}
         />
         {toastPortal}
       </>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Award,
@@ -20,6 +20,7 @@ import { PortalTriagePanel } from './PortalTriagePanel';
 
 interface DemandPortalProps {
   isPublicMode?: boolean;
+  initialSubTab?: 'SUBMISSION' | 'PROTOCOL' | 'SHOWCASE' | 'TRIAGE';
   onOpenLabLogin?: () => void;
   onExitPublicMode?: () => void;
 }
@@ -28,6 +29,7 @@ type PortalSubTab = 'SUBMISSION' | 'PROTOCOL' | 'SHOWCASE' | 'TRIAGE';
 
 export const DemandPortal: React.FC<DemandPortalProps> = ({
   isPublicMode = false,
+  initialSubTab,
   onOpenLabLogin,
   onExitPublicMode,
 }) => {
@@ -38,8 +40,14 @@ export const DemandPortal: React.FC<DemandPortalProps> = ({
 
   const [mentorDemoMode, setMentorDemoMode] = useState(false);
   const [subTab, setSubTab] = useState<PortalSubTab>(
-    !isPublicMode && isStaff ? 'TRIAGE' : 'SUBMISSION'
+    initialSubTab ?? (!isPublicMode && isStaff ? 'TRIAGE' : 'SUBMISSION')
   );
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
   const [trackedProtocol, setTrackedProtocol] = useState<string | undefined>(undefined);
   const [byokOpen, setByokOpen] = useState(false);
 
@@ -63,7 +71,7 @@ export const DemandPortal: React.FC<DemandPortalProps> = ({
                   className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Voltar</span>
+                  <span>Início</span>
                 </button>
               )}
               <div className="flex items-center gap-2.5">
