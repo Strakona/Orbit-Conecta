@@ -18,7 +18,7 @@ const OrbitWorkspace: React.FC = () => {
   const { state, toasts, dismissToast } = useOrbit();
   const [boardOpen, setBoardOpen] = useState(false);
   const [auditoriumDemand, setAuditoriumDemand] = useState<Demand | null>(null);
-  const [publicPortalOpen, setPublicPortalOpen] = useState(false);
+  const [labLoginOpen, setLabLoginOpen] = useState(false);
 
   const toastPortal = (
     <div className="no-print fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
@@ -52,18 +52,23 @@ const OrbitWorkspace: React.FC = () => {
   );
 
   if (!state.session) {
-    if (publicPortalOpen) {
+    if (labLoginOpen) {
       return (
         <>
-          <DemandPortal
-            isPublicMode
-            onExitPublicMode={() => setPublicPortalOpen(false)}
-          />
+          <LoginScreen onBackToPublicPortal={() => setLabLoginOpen(false)} />
           {toastPortal}
         </>
       );
     }
-    return <LoginScreen onOpenPublicPortal={() => setPublicPortalOpen(true)} />;
+    return (
+      <>
+        <DemandPortal
+          isPublicMode
+          onOpenLabLogin={() => setLabLoginOpen(true)}
+        />
+        {toastPortal}
+      </>
+    );
   }
 
   return (

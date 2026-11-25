@@ -12,6 +12,7 @@ import {
   buildOrbitDemandFromSubmission,
   PortalAnalysisInput,
 } from '../services/demandTriageService';
+import { STAFF_PASSCODES } from '../utils/demoMode';
 import {
   AiArtifact,
   AuditLogEntry,
@@ -92,11 +93,21 @@ function loadState(): OrbitState {
     const parsed = JSON.parse(raw) as Partial<OrbitState>;
     const fallback = createInitialState();
     const rawDemands = parsed.demands?.length ? parsed.demands : fallback.demands;
+    const rawStudents = parsed.students?.length ? parsed.students : fallback.students;
     return {
       ...fallback,
       ...parsed,
       turmas: parsed.turmas?.length ? parsed.turmas : fallback.turmas,
-      students: parsed.students?.length ? parsed.students : fallback.students,
+      students: rawStudents.map((stu, idx) => {
+        const seedStu = fallback.students.find((f) => f.id === stu.id);
+        return {
+          ...stu,
+          badgeCode:
+            stu.badgeCode ??
+            seedStu?.badgeCode ??
+            `ORB-${String(idx + 1).padStart(2, '0')}`,
+        };
+      }),
       demands: rawDemands.map(migrateDemandScreens),
       portalSubmissions: parsed.portalSubmissions?.length
         ? parsed.portalSubmissions
@@ -114,6 +125,8 @@ interface OrbitContextValue {
   dismissToast: (id: string) => void;
   pushToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
   loginAsStudent: (studentId: string, pin: string) => boolean;
+  loginAsStudentByBadge: (badgeCode: string, pin: string) => boolean;
+  loginAsStaffWithCode: (role: Exclude<Role, 'ALUNO'>, passcode: string) => boolean;
   loginAsRole: (role: Exclude<Role, 'ALUNO'>) => void;
   switchDemoRole: (role: Role) => void;
   logout: () => void;
@@ -206,6 +219,33 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       activeDemandId: null,
     }));
     pushToast(`Bem-vindo(a), ${student.name}!`, 'Explore o Mapa 2.5D ou clique na Sala de Demandas.', 'success');
+    return true;
+  };
+
+  const loginAsStudentByBadge = (badgeCode: string, pin: string): boolean => {
+    const normalized = badgeCode.trim().toUpperCase();
+    const student = state.students.find(
+      (s) => s.badgeCode.toUpperCase() === normalized && s.pin === pin
+    );
+    if (!student) return false;
+    setState((prev) => ({
+      ...prev,
+      session: { role: 'ALUNO', studentId: student.id, name: student.name },
+      activeTab: 'LAB',
+      activeDemandId: null,
+    }));
+    pushToast(`Bem-vindo(a), ${student.name}!`, 'Explore o Mapa 2.5D ou clique na Sala de Demandas.', 'success');
+    return true;
+  };
+
+  const loginAsStaffWithCode = (
+    role: Exclude<Role, 'ALUNO'>,
+    passcode: string
+  ): boolean => {
+    if (passcode.trim().toUpperCase() !== STAFF_PASSCODES[role].toUpperCase()) {
+      return false;
+    }
+    loginAsRole(role);
     return true;
   };
 
@@ -932,6 +972,8 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         dismissToast,
         pushToast,
         loginAsStudent,
+        loginAsStudentByBadge,
+        loginAsStaffWithCode,
         loginAsRole,
         switchDemoRole,
         logout,

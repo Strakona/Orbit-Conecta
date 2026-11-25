@@ -129,6 +129,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-1',
     uuid: 'ahsd-cemi2-8f1a',
+    badgeCode: 'ORB-01',
     name: 'Lucas Ferreira',
     turmaId: 'turma-1',
     pin: '1234',
@@ -148,6 +149,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-2',
     uuid: 'ahsd-cemi2-4b9c',
+    badgeCode: 'ORB-02',
     name: 'Sofia Almeida',
     turmaId: 'turma-1',
     pin: '1111',
@@ -168,6 +170,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-3',
     uuid: 'ahsd-cemi2-7d2e',
+    badgeCode: 'ORB-03',
     name: 'Pedro Henrique',
     turmaId: 'turma-1',
     pin: '2222',
@@ -189,6 +192,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-4',
     uuid: 'ahsd-cemi2-9c3f',
+    badgeCode: 'ORB-04',
     name: 'Marina Costa',
     turmaId: 'turma-1',
     pin: '3333',
@@ -209,6 +213,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-5',
     uuid: 'ahsd-cemi2-1a5d',
+    badgeCode: 'ORB-05',
     name: 'Gabriel Martins',
     turmaId: 'turma-1',
     pin: '4444',
@@ -230,6 +235,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-6',
     uuid: 'ahsd-cemi2-6e8b',
+    badgeCode: 'ORB-06',
     name: 'Helena Ribeiro',
     turmaId: 'turma-2',
     pin: '5555',
@@ -250,6 +256,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-7',
     uuid: 'ahsd-cemi2-2f0a',
+    badgeCode: 'ORB-07',
     name: 'Davi Oliveira',
     turmaId: 'turma-2',
     pin: '6666',
@@ -269,6 +276,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-8',
     uuid: 'ahsd-cemi2-5b4c',
+    badgeCode: 'ORB-08',
     name: 'Laura Mendes',
     turmaId: 'turma-3',
     pin: '7777',
@@ -289,6 +297,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-9',
     uuid: 'ahsd-cemi2-3d7e',
+    badgeCode: 'ORB-09',
     name: 'Rafael Souza',
     turmaId: 'turma-3',
     pin: '8888',
@@ -308,6 +317,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-10',
     uuid: 'ahsd-cemi2-0a9f',
+    badgeCode: 'ORB-10',
     name: 'Beatriz Lima',
     turmaId: 'turma-4',
     pin: '9999',

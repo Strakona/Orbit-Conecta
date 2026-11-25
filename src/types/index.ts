@@ -36,6 +36,7 @@ export interface Turma {
 export interface Student {
   id: string;
   uuid: string; // Anonymized identifier sent to Gemini API (LGPD)
+  badgeCode: string; // Institutional badge code for login without listing names (e.g. ORB-01)
   name: string;
   turmaId: string;
   pin: string;

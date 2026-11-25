@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
 import { Role } from '../types';
+import { isDemoMode } from '../utils/demoMode';
 
 export const Header: React.FC = () => {
   const {
@@ -28,6 +29,7 @@ export const Header: React.FC = () => {
 
   const session = state.session;
   if (!session) return null;
+  const demo = isDemoMode();
 
   const pendingAlertsCount = state.students.filter((s) => s.handRaised !== null).length;
   const deliveredCount = state.demands.filter((d) => d.status === 'ENTREGUE').length;
@@ -180,28 +182,30 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Right: Quick Demo Role Switch + A11y + Reset + Logout */}
+        {/* Right: Quick Demo Role Switch (?demo=1 only) + A11y + Reset + Logout */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <div
-            className="hidden lg:flex items-center gap-1 bg-slate-900/90 border border-slate-700 rounded-lg p-0.5"
-            title="Troca rápida de perfil para demonstração"
-          >
-            <span className="text-[10px] text-slate-400 px-1.5 font-medium">Demo:</span>
-            {roleButtons.map((btn) => (
-              <button
-                key={btn.role}
-                onClick={() => switchDemoRole(btn.role)}
-                className={`px-2 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition ${
-                  session.role === btn.role
-                    ? 'bg-sky-500 text-white'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                {btn.icon}
-                <span>{btn.label}</span>
-              </button>
-            ))}
-          </div>
+          {demo && (
+            <div
+              className="hidden lg:flex items-center gap-1 bg-slate-900/90 border border-slate-700 rounded-lg p-0.5"
+              title="Troca rápida de perfil para demonstração"
+            >
+              <span className="text-[10px] text-amber-300 px-1.5 font-semibold">Demo:</span>
+              {roleButtons.map((btn) => (
+                <button
+                  key={btn.role}
+                  onClick={() => switchDemoRole(btn.role)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition ${
+                    session.role === btn.role
+                      ? 'bg-sky-500 text-white'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  {btn.icon}
+                  <span>{btn.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <button
             onClick={toggleHighContrast}
@@ -216,14 +220,16 @@ export const Header: React.FC = () => {
             <Contrast className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={resetDemoData}
-            title="Resetar Dados Demo"
-            className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Resetar Demo</span>
-          </button>
+          {(demo || session.role === 'COORDENADOR') && (
+            <button
+              onClick={resetDemoData}
+              title="Resetar Dados Demo"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Resetar Demo</span>
+            </button>
+          )}
 
           <button
             onClick={logout}
@@ -236,24 +242,26 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile/Chromebook compact Demo Switcher */}
-      <div className="lg:hidden px-3 pb-2 flex items-center justify-between gap-2 border-t border-slate-800/70 pt-1.5">
-        <span className="text-[11px] text-slate-400">Troca rápida Demo:</span>
-        <div className="flex items-center gap-1">
-          {roleButtons.map((btn) => (
-            <button
-              key={btn.role}
-              onClick={() => switchDemoRole(btn.role)}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer ${
-                session.role === btn.role ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              {btn.icon}
-              <span>{btn.label}</span>
-            </button>
-          ))}
+      {/* Mobile/Chromebook compact Demo Switcher (?demo=1 only) */}
+      {demo && (
+        <div className="lg:hidden px-3 pb-2 flex items-center justify-between gap-2 border-t border-slate-800/70 pt-1.5">
+          <span className="text-[11px] text-amber-300">Troca rápida Demo:</span>
+          <div className="flex items-center gap-1">
+            {roleButtons.map((btn) => (
+              <button
+                key={btn.role}
+                onClick={() => switchDemoRole(btn.role)}
+                className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer ${
+                  session.role === btn.role ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-300'
+                }`}
+              >
+                {btn.icon}
+                <span>{btn.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 };

@@ -294,6 +294,26 @@ export const CoordinatorPanel: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Internal Student Badge Directory (Coordinator Only) */}
+            <div className="pt-3 border-t border-slate-200 space-y-2">
+              <div className="text-xs font-bold text-slate-800">
+                Crachás de Acesso (Uso Interno CEMI 2)
+              </div>
+              <div className="max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1">
+                {state.students.map((stu) => (
+                  <div
+                    key={stu.id}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px]"
+                  >
+                    <span className="font-semibold text-slate-800 truncate">{stu.name}</span>
+                    <span className="font-mono font-bold text-sky-700 shrink-0 ml-2">
+                      {stu.badgeCode} · PIN {stu.pin}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
