@@ -16,7 +16,7 @@ import { StageKey } from '../types';
 const ALL_STAGES: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
 export const CoordinatorPanel: React.FC = () => {
-  const { state, createDemand, setGeminiApiKey } = useOrbit();
+  const { state, syncStatus, createDemand, setGeminiApiKey } = useOrbit();
 
   // New Demand Form
   const [title, setTitle] = useState('');
@@ -86,6 +86,22 @@ export const CoordinatorPanel: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <span
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+            syncStatus === 'ONLINE_FIREBASE'
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+              : syncStatus === 'CONNECTING'
+              ? 'bg-sky-50 border-sky-300 text-sky-800'
+              : 'bg-amber-50 border-amber-300 text-amber-900'
+          }`}
+        >
+          {syncStatus === 'ONLINE_FIREBASE'
+            ? '🟢 Firebase Firestore Online (Tempo Real)'
+            : syncStatus === 'CONNECTING'
+            ? '🔵 Conectando ao Firestore...'
+            : '🟡 Modo Local (Configure .env para Firebase)'}
+        </span>
       </div>
 
       {/* Top Grid: Create Demand + BYOK */}

@@ -78,6 +78,32 @@ function generateSimulatedSocraticReply(req: SocraticRequest): string {
 export async function askSocraticTutor(req: SocraticRequest): Promise<SocraticResponse> {
   const cleanKey = req.apiKey.trim();
   if (!cleanKey) {
+    try {
+      const proxyRes = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'socratic',
+          payload: {
+            studentUuid: req.studentUuid,
+            demandTitle: req.demandTitle,
+            secretaria: req.secretaria,
+            stageKey: req.stageKey,
+            personaId: req.personaId,
+            userMessage: req.userMessage,
+            history: req.history,
+          },
+        }),
+      });
+      if (proxyRes.ok) {
+        const data = (await proxyRes.json()) as { configured?: boolean; reply?: string };
+        if (data.configured && data.reply) {
+          return { reply: data.reply, mode: 'GEMINI_LIVE' };
+        }
+      }
+    } catch {
+      // fallback to local simulator
+    }
     return {
       reply: generateSimulatedSocraticReply(req),
       mode: 'SIMULADO',
@@ -148,6 +174,31 @@ export async function testProjectAssistant(params: {
   };
 
   if (!cleanKey) {
+    try {
+      const proxyRes = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'assistant',
+          payload: {
+            assistantName: aiArtifact.assistantName,
+            persona: aiArtifact.persona,
+            systemInstructions: aiArtifact.systemInstructions,
+            faqs: aiArtifact.faqs,
+            demandTitle,
+            userQuestion,
+          },
+        }),
+      });
+      if (proxyRes.ok) {
+        const data = (await proxyRes.json()) as { configured?: boolean; reply?: string };
+        if (data.configured && data.reply) {
+          return { reply: data.reply, mode: 'GEMINI_LIVE' };
+        }
+      }
+    } catch {
+      // fallback to local simulator
+    }
     return { reply: simulateReply(), mode: 'SIMULADO' };
   }
 

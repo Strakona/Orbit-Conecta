@@ -9,7 +9,7 @@ import type {
   RoomInfo,
   TaskItem,
 } from '../habblaud/shared/types';
-import { Demand, OrbitState, StageKey } from '../types';
+import { AnonymousPresence, Demand, OrbitState, StageKey } from '../types';
 
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
@@ -107,7 +107,7 @@ let snapshotRev = 1;
  */
 export function buildHabblaudSnapshot(
   state: OrbitState,
-  options?: { anonymize?: boolean }
+  options?: { anonymize?: boolean; publicPresence?: AnonymousPresence[] }
 ): OfficeSnapshot {
   const anonymize = Boolean(options?.anonymize);
   const now = Date.now();
@@ -162,7 +162,53 @@ export function buildHabblaudSnapshot(
     };
   });
 
-  const agents: AgentInfo[] = state.students.map((stu, idx) => {
+  const agents: AgentInfo[] =
+    anonymize && options?.publicPresence && options.publicPresence.length > 0
+      ? options.publicPresence.map((p, idx) => {
+          const inActiveRoom = activeRoomIds.has(p.location);
+          const roomId = inActiveRoom ? p.location : fallbackRoomId;
+          const demand = activeDemands.find((d) => d.id === roomId);
+          const actInfo = activityForStage(p.activeStage);
+          const activity: Activity = {
+            id: `act-${p.uuid}-${p.activeStage ?? 'idle'}`,
+            kind: actInfo.kind,
+            icon: actInfo.icon,
+            text: p.handRaised
+              ? p.handRaised === 'AJUDA'
+                ? '✋ Precisa de ajuda do mentor'
+                : '✅ Etapa pronta para avaliar'
+              : actInfo.text,
+            at: now - 15_000,
+          };
+          const status: AgentInfo['status'] = p.handRaised
+            ? 'waiting'
+            : inActiveRoom
+            ? 'working'
+            : 'idle';
+
+          return {
+            id: p.uuid,
+            kind: 'main',
+            roomId,
+            name: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe CEMI 2',
+            look: p.look ?? (idx % 2 === 0 ? 'm' : 'f'),
+            role: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe CEMI 2',
+            title: demand ? demand.shortName : 'Lounge',
+            sessionId: p.uuid,
+            account: p.turmaId,
+            status,
+            waitingFor: p.handRaised ? 'Aguardando mentoria' : undefined,
+            activity,
+            recent: [activity],
+            tasks: [],
+            startedAt: now - 600_000,
+            lastEventAt: now - 10_000,
+            statusSince: now - 120_000,
+            stats: { toolCalls: 3, tokensIn: 0, tokensOut: 0, subagents: 0 },
+            seed: hash32(p.uuid),
+          };
+        })
+      : state.students.map((stu, idx) => {
     const inActiveRoom = activeRoomIds.has(stu.location);
     const roomId = inActiveRoom ? stu.location : fallbackRoomId;
     const demand = activeDemands.find((d) => d.id === roomId);

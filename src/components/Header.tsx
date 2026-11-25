@@ -19,6 +19,7 @@ import { isDemoMode } from '../utils/demoMode';
 export const Header: React.FC = () => {
   const {
     state,
+    syncStatus,
     switchDemoRole,
     logout,
     setViewMode,
@@ -182,8 +183,31 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Right: Quick Demo Role Switch (?demo=1 only) + A11y + Reset + Logout */}
+        {/* Right: Sync Indicator + Quick Demo Role Switch (?demo=1 only) + A11y + Reset + Logout */}
         <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            title={
+              syncStatus === 'ONLINE_FIREBASE'
+                ? 'Sincronizado em tempo real com Firebase Firestore'
+                : syncStatus === 'CONNECTING'
+                ? 'Conectando ao Firebase Firestore...'
+                : 'Modo offline local (localStorage)'
+            }
+            className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
+              syncStatus === 'ONLINE_FIREBASE'
+                ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200'
+                : syncStatus === 'CONNECTING'
+                ? 'bg-sky-500/15 border-sky-400/40 text-sky-200'
+                : 'bg-slate-800/90 border-slate-700 text-slate-300'
+            }`}
+          >
+            {syncStatus === 'ONLINE_FIREBASE'
+              ? '🟢 Firebase Online'
+              : syncStatus === 'CONNECTING'
+              ? '🔵 Conectando...'
+              : '🟡 Modo Local'}
+          </span>
+
           {demo && (
             <div
               className="hidden lg:flex items-center gap-1 bg-slate-900/90 border border-slate-700 rounded-lg p-0.5"

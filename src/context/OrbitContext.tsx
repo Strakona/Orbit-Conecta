@@ -8,13 +8,27 @@ import {
 } from '../data/seedData';
 import { INITIAL_PORTAL_SUBMISSIONS } from '../data/portalSeedData';
 import { PROJECT_THEME_ACCENTS } from '../habblaud/client/src/art/theme';
+import { ensureFirebaseAuthSession, isFirebaseConfigured } from '../lib/firebase';
 import {
   buildOrbitDemandFromSubmission,
   PortalAnalysisInput,
 } from '../services/demandTriageService';
-import { STAFF_PASSCODES } from '../utils/demoMode';
+import {
+  ensureInitialFirestoreSeed,
+  resetAllFirestoreDemo,
+  resetPortalFirestoreDemo,
+  subscribePrivateFirestore,
+  subscribePublicFirestore,
+  syncAuditLogToFirestore,
+  syncDemandToFirestore,
+  syncPortalSubmissionToFirestore,
+  syncStudentToFirestore,
+  toAnonymousPresence,
+  verifyStudentBadgeInFirestore,
+} from '../services/firestoreSync';
 import {
   AiArtifact,
+  AnonymousPresence,
   AuditLogEntry,
   Demand,
   DemandAiAnalysis,
@@ -26,9 +40,12 @@ import {
   QaArtifact,
   Role,
   StageKey,
+  Student,
+  SyncStatus,
   ToastMessage,
   UiArtifact,
 } from '../types';
+import { STAFF_PASSCODES } from '../utils/demoMode';
 
 const STORAGE_KEY = 'orbit_conecta_state_v1';
 
@@ -76,7 +93,8 @@ function migrateDemandScreens(demand: Demand): Demand {
         ...demand.artifacts,
         ui: {
           ...demand.artifacts.ui,
-          navigationStyle: demand.artifacts.ui.navigationStyle ?? seed?.artifacts.ui.navigationStyle ?? 'tabs',
+          navigationStyle:
+            demand.artifacts.ui.navigationStyle ?? seed?.artifacts.ui.navigationStyle ?? 'tabs',
           screens: [firstScreen, ...seedScreens.slice(1)],
         },
         logic: nextLogic,
@@ -121,11 +139,13 @@ function loadState(): OrbitState {
 
 interface OrbitContextValue {
   state: OrbitState;
+  syncStatus: SyncStatus;
+  publicPresence: AnonymousPresence[];
   toasts: ToastMessage[];
   dismissToast: (id: string) => void;
   pushToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
   loginAsStudent: (studentId: string, pin: string) => boolean;
-  loginAsStudentByBadge: (badgeCode: string, pin: string) => boolean;
+  loginAsStudentByBadge: (badgeCode: string, pin: string) => Promise<boolean>;
   loginAsStaffWithCode: (role: Exclude<Role, 'ALUNO'>, passcode: string) => boolean;
   loginAsRole: (role: Exclude<Role, 'ALUNO'>) => void;
   switchDemoRole: (role: Role) => void;
@@ -175,6 +195,12 @@ const OrbitContext = createContext<OrbitContextValue | null>(null);
 
 export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<OrbitState>(() => loadState());
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
+    isFirebaseConfigured ? 'CONNECTING' : 'OFFLINE_LOCAL'
+  );
+  const [publicPresence, setPublicPresence] = useState<AnonymousPresence[]>(() =>
+    INITIAL_STUDENTS.map((s, idx) => toAnonymousPresence(s, idx))
+  );
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
@@ -192,6 +218,54 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.documentElement.classList.remove('high-contrast');
     }
   }, [state.highContrast]);
+
+  // Public Firestore sync (demands, portalSubmissions, anonymized presence)
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setSyncStatus('OFFLINE_LOCAL');
+      return;
+    }
+
+    void ensureInitialFirestoreSeed();
+    const unsubscribe = subscribePublicFirestore({
+      onDemands: (demands) => {
+        setState((prev) => ({
+          ...prev,
+          demands: demands.map(migrateDemandScreens),
+        }));
+      },
+      onPortalSubmissions: (portalSubmissions) => {
+        setState((prev) => ({ ...prev, portalSubmissions }));
+      },
+      onPresence: (presence) => {
+        setPublicPresence(presence);
+      },
+      onStatus: setSyncStatus,
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Private Firestore sync (ONLY subscribed when authenticated inside CEMI 2)
+  useEffect(() => {
+    if (!isFirebaseConfigured || !state.session) return;
+    let active = true;
+    let unsubPrivate: (() => void) | undefined;
+
+    void ensureFirebaseAuthSession().then(() => {
+      if (!active) return;
+      unsubPrivate = subscribePrivateFirestore({
+        onTurmas: (turmas) => setState((prev) => ({ ...prev, turmas })),
+        onStudents: (students) => setState((prev) => ({ ...prev, students })),
+        onAuditLogs: (auditLogs) => setState((prev) => ({ ...prev, auditLogs })),
+      });
+    });
+
+    return () => {
+      active = false;
+      unsubPrivate?.();
+    };
+  }, [state.session?.role, state.session?.studentId]);
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -222,15 +296,30 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
-  const loginAsStudentByBadge = (badgeCode: string, pin: string): boolean => {
+  const loginAsStudentByBadge = async (
+    badgeCode: string,
+    pin: string
+  ): Promise<boolean> => {
     const normalized = badgeCode.trim().toUpperCase();
-    const student = state.students.find(
+    let student: Student | undefined = state.students.find(
       (s) => s.badgeCode.toUpperCase() === normalized && s.pin === pin
     );
+
+    if (isFirebaseConfigured) {
+      const remoteMatch = await verifyStudentBadgeInFirestore(normalized, pin);
+      if (remoteMatch) {
+        student = remoteMatch;
+      }
+    }
+
     if (!student) return false;
+
     setState((prev) => ({
       ...prev,
-      session: { role: 'ALUNO', studentId: student.id, name: student.name },
+      students: prev.students.some((s) => s.id === student!.id)
+        ? prev.students.map((s) => (s.id === student!.id ? student! : s))
+        : [...prev.students, student!],
+      session: { role: 'ALUNO', studentId: student!.id, name: student!.name },
       activeTab: 'LAB',
       activeDemandId: null,
     }));
@@ -311,7 +400,11 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const setActiveTab = (activeTab: OrbitState['activeTab']) => {
-    setState((prev) => ({ ...prev, activeTab, activeDemandId: activeTab === 'LAB' ? prev.activeDemandId : null }));
+    setState((prev) => ({
+      ...prev,
+      activeTab,
+      activeDemandId: activeTab === 'LAB' ? prev.activeDemandId : null,
+    }));
   };
 
   const openDemandRoom = (demandId: string | null) => {
@@ -330,6 +423,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       session: state.session,
       geminiApiKey: state.geminiApiKey,
     });
+    void resetAllFirestoreDemo();
     pushToast('Dados demo restaurados!', 'Todas as demandas e avatares voltaram ao estado inicial.', 'info');
   };
 
@@ -338,38 +432,44 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const targetDemand = state.demands.find((d) => d.id === demandId);
     if (!targetDemand) return;
 
+    const updatedDemand: Demand = {
+      ...targetDemand,
+      stages: {
+        ...targetDemand.stages,
+        [stageKey]: {
+          ...targetDemand.stages[stageKey],
+          status: 'EM_DESENVOLVIMENTO',
+          assigneeId: studentId,
+          feedback: undefined,
+        },
+      },
+    };
+
+    const idx = state.students.findIndex((s) => s.id === studentId);
+    const targetStudent = idx >= 0 ? state.students[idx] : undefined;
+    const updatedStudent = targetStudent
+      ? {
+          ...targetStudent,
+          location: demandId,
+          activeStage: stageKey,
+          activityBubble: STAGE_META[stageKey].bubble,
+          handRaised: null,
+          handNote: undefined,
+        }
+      : undefined;
+
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        return {
-          ...d,
-          stages: {
-            ...d.stages,
-            [stageKey]: {
-              ...d.stages[stageKey],
-              status: 'EM_DESENVOLVIMENTO',
-              assigneeId: studentId,
-              feedback: undefined,
-            },
-          },
-        };
-      }),
+      demands: prev.demands.map((d) => (d.id === demandId ? updatedDemand : d)),
       students: prev.students.map((s) =>
-        s.id === studentId
-          ? {
-              ...s,
-              location: demandId,
-              activeStage: stageKey,
-              activityBubble: STAGE_META[stageKey].bubble,
-              handRaised: null,
-              handNote: undefined,
-            }
-          : s
+        s.id === studentId && updatedStudent ? updatedStudent : s
       ),
       activeTab: 'LAB',
       activeDemandId: demandId,
     }));
+
+    void syncDemandToFirestore(updatedDemand);
+    if (updatedStudent) void syncStudentToFirestore(updatedStudent, idx);
 
     pushToast(
       `Etapa ${STAGE_META[stageKey].shortLabel} assumida!`,
@@ -379,70 +479,82 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleStageChecklistItem = (demandId: string, stageKey: StageKey, itemId: string) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const stage = target.stages[stageKey];
+    const updated: Demand = {
+      ...target,
+      stages: {
+        ...target.stages,
+        [stageKey]: {
+          ...stage,
+          checklist: stage.checklist.map((item) =>
+            item.id === itemId ? { ...item, done: !item.done } : item
+          ),
+        },
+      },
+    };
+
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        const stage = d.stages[stageKey];
-        return {
-          ...d,
-          stages: {
-            ...d.stages,
-            [stageKey]: {
-              ...stage,
-              checklist: stage.checklist.map((item) =>
-                item.id === itemId ? { ...item, done: !item.done } : item
-              ),
-            },
-          },
-        };
-      }),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
   };
 
   const updateUiArtifact = (demandId: string, ui: UiArtifact) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const updated: Demand = { ...target, artifacts: { ...target.artifacts, ui } };
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) =>
-        d.id === demandId ? { ...d, artifacts: { ...d.artifacts, ui } } : d
-      ),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
   };
 
   const updateLogicArtifact = (demandId: string, logic: LogicArtifact) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const updated: Demand = { ...target, artifacts: { ...target.artifacts, logic } };
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) =>
-        d.id === demandId ? { ...d, artifacts: { ...d.artifacts, logic } } : d
-      ),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
   };
 
   const updateAiArtifact = (demandId: string, ai: AiArtifact) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const updated: Demand = { ...target, artifacts: { ...target.artifacts, ai } };
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) =>
-        d.id === demandId ? { ...d, artifacts: { ...d.artifacts, ai } } : d
-      ),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
   };
 
   const updateQaArtifact = (demandId: string, qa: QaArtifact) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const updated: Demand = { ...target, artifacts: { ...target.artifacts, qa } };
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) =>
-        d.id === demandId ? { ...d, artifacts: { ...d.artifacts, qa } } : d
-      ),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
   };
 
   const raiseHand = (studentId: string, type: Exclude<HandRaisedType, null>, note?: string) => {
+    const idx = state.students.findIndex((s) => s.id === studentId);
+    if (idx < 0) return;
+    const updatedStudent: Student = { ...state.students[idx], handRaised: type, handNote: note };
     setState((prev) => ({
       ...prev,
-      students: prev.students.map((s) =>
-        s.id === studentId ? { ...s, handRaised: type, handNote: note } : s
-      ),
+      students: prev.students.map((s) => (s.id === studentId ? updatedStudent : s)),
     }));
+    void syncStudentToFirestore(updatedStudent, idx);
     pushToast(
       type === 'AJUDA' ? '✋ Mão levantada para dúvida!' : '✅ Etapa enviada para avaliação!',
       'Seu avatar foi até a mesa central da sala para chamar o Professor Mentor.',
@@ -451,44 +563,61 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const clearHand = (studentId: string) => {
+    const idx = state.students.findIndex((s) => s.id === studentId);
+    if (idx < 0) return;
+    const updatedStudent: Student = {
+      ...state.students[idx],
+      handRaised: null,
+      handNote: undefined,
+    };
     setState((prev) => ({
       ...prev,
-      students: prev.students.map((s) =>
-        s.id === studentId ? { ...s, handRaised: null, handNote: undefined } : s
-      ),
+      students: prev.students.map((s) => (s.id === studentId ? updatedStudent : s)),
     }));
+    void syncStudentToFirestore(updatedStudent, idx);
   };
 
   const submitStageForReview = (demandId: string, stageKey: StageKey, studentId: string) => {
-    setState((prev) => ({
-      ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        return {
-          ...d,
+    const targetDemand = state.demands.find((d) => d.id === demandId);
+    const idx = state.students.findIndex((s) => s.id === studentId);
+    const updatedDemand: Demand | undefined = targetDemand
+      ? {
+          ...targetDemand,
           stages: {
-            ...d.stages,
+            ...targetDemand.stages,
             [stageKey]: {
-              ...d.stages[stageKey],
+              ...targetDemand.stages[stageKey],
               status: 'EM_REVISAO',
-              assigneeId: d.stages[stageKey].assigneeId ?? studentId,
+              assigneeId: targetDemand.stages[stageKey].assigneeId ?? studentId,
               submittedAt: new Date().toISOString(),
             },
           },
-        };
-      }),
+        }
+      : undefined;
+    const updatedStudent: Student | undefined =
+      idx >= 0
+        ? {
+            ...state.students[idx],
+            location: demandId,
+            activeStage: stageKey,
+            handRaised: 'AVALIACAO',
+            handNote: `Etapa ${STAGE_META[stageKey].shortLabel} concluída e pronta para avaliação.`,
+          }
+        : undefined;
+
+    setState((prev) => ({
+      ...prev,
+      demands: prev.demands.map((d) =>
+        d.id === demandId && updatedDemand ? updatedDemand : d
+      ),
       students: prev.students.map((s) =>
-        s.id === studentId
-          ? {
-              ...s,
-              location: demandId,
-              activeStage: stageKey,
-              handRaised: 'AVALIACAO',
-              handNote: `Etapa ${STAGE_META[stageKey].shortLabel} concluída e pronta para avaliação.`,
-            }
-          : s
+        s.id === studentId && updatedStudent ? updatedStudent : s
       ),
     }));
+
+    if (updatedDemand) void syncDemandToFirestore(updatedDemand);
+    if (updatedStudent) void syncStudentToFirestore(updatedStudent, idx);
+
     pushToast(
       '✅ Etapa concluída e enviada!',
       'Mão levantada na mesa central. Troque para Professor Mentor para avaliar.',
@@ -498,78 +627,97 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const approveStage = (demandId: string, stageKey: StageKey, badgeName?: string) => {
     const demand = state.demands.find((d) => d.id === demandId);
-    const assigneeId = demand?.stages[stageKey].assigneeId;
-    const badge = badgeName ?? `${STAGE_META[stageKey].shortLabel} · ${demand?.shortName ?? 'SMED'}`;
+    if (!demand) return;
+    const assigneeId = demand.stages[stageKey].assigneeId;
+    const badge = badgeName ?? `${STAGE_META[stageKey].shortLabel} · ${demand.shortName}`;
+
+    const updatedDemand: Demand = {
+      ...demand,
+      stages: {
+        ...demand.stages,
+        [stageKey]: {
+          ...demand.stages[stageKey],
+          status: 'APROVADA',
+          approvedAt: new Date().toISOString(),
+          feedback: undefined,
+        },
+      },
+    };
+
+    const idx = state.students.findIndex((s) => s.id === assigneeId);
+    const targetStu = idx >= 0 ? state.students[idx] : undefined;
+    const updatedStudent: Student | undefined = targetStu
+      ? {
+          ...targetStu,
+          handRaised: null,
+          handNote: undefined,
+          badges: targetStu.badges.includes(badge)
+            ? targetStu.badges
+            : [...targetStu.badges, badge],
+          location: 'LOUNGE',
+          activityBubble: '☕ Lounge',
+        }
+      : undefined;
 
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        return {
-          ...d,
-          stages: {
-            ...d.stages,
-            [stageKey]: {
-              ...d.stages[stageKey],
-              status: 'APROVADA',
-              approvedAt: new Date().toISOString(),
-              feedback: undefined,
-            },
-          },
-        };
-      }),
-      students: prev.students.map((s) => {
-        if (s.id !== assigneeId) return s;
-        const nextBadges = s.badges.includes(badge) ? s.badges : [...s.badges, badge];
-        return {
-          ...s,
-          handRaised: null,
-          handNote: undefined,
-          badges: nextBadges,
-          location: 'LOUNGE',
-          activityBubble: '☕ Lounge',
-        };
-      }),
+      demands: prev.demands.map((d) => (d.id === demandId ? updatedDemand : d)),
+      students: prev.students.map((s) =>
+        s.id === assigneeId && updatedStudent ? updatedStudent : s
+      ),
     }));
+
+    void syncDemandToFirestore(updatedDemand);
+    if (updatedStudent) void syncStudentToFirestore(updatedStudent, idx);
 
     pushToast(`Etapa ${STAGE_META[stageKey].shortLabel} aprovada!`, `Badge "${badge}" concedida.`, 'success');
   };
 
   const returnStageWithFeedback = (demandId: string, stageKey: StageKey, feedback: string) => {
     const demand = state.demands.find((d) => d.id === demandId);
-    const assigneeId = demand?.stages[stageKey].assigneeId;
+    if (!demand) return;
+    const assigneeId = demand.stages[stageKey].assigneeId;
+
+    const updatedDemand: Demand = {
+      ...demand,
+      stages: {
+        ...demand.stages,
+        [stageKey]: {
+          ...demand.stages[stageKey],
+          status: 'EM_DESENVOLVIMENTO',
+          feedback,
+        },
+      },
+    };
+    const idx = state.students.findIndex((s) => s.id === assigneeId);
+    const updatedStudent: Student | undefined =
+      idx >= 0
+        ? { ...state.students[idx], handRaised: null, handNote: undefined }
+        : undefined;
 
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        return {
-          ...d,
-          stages: {
-            ...d.stages,
-            [stageKey]: {
-              ...d.stages[stageKey],
-              status: 'EM_DESENVOLVIMENTO',
-              feedback,
-            },
-          },
-        };
-      }),
+      demands: prev.demands.map((d) => (d.id === demandId ? updatedDemand : d)),
       students: prev.students.map((s) =>
-        s.id === assigneeId ? { ...s, handRaised: null, handNote: undefined } : s
+        s.id === assigneeId && updatedStudent ? updatedStudent : s
       ),
     }));
+
+    void syncDemandToFirestore(updatedDemand);
+    if (updatedStudent) void syncStudentToFirestore(updatedStudent, idx);
 
     pushToast('Feedback enviado ao estudante', 'A etapa voltou para ajustes na bancada.', 'warning');
   };
 
   const activateTestMode = (demandId: string) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const updated: Demand = { ...target, status: 'MODO_TESTE' };
     setState((prev) => ({
       ...prev,
-      demands: prev.demands.map((d) =>
-        d.id === demandId ? { ...d, status: 'MODO_TESTE' } : d
-      ),
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
     }));
+    void syncDemandToFirestore(updated);
     pushToast(
       'Modo Teste ativado na sala!',
       'O Auditório de Pitches foi iluminado para testes coletivos da turma.',
@@ -587,42 +735,52 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .filter((id): id is string => Boolean(id))
     );
 
-    setState((prev) => ({
-      ...prev,
-      demands: prev.demands.map((d) => {
-        if (d.id !== demandId) return d;
-        const nextStages = { ...d.stages };
-        (Object.keys(nextStages) as StageKey[]).forEach((k) => {
-          if (nextStages[k].status !== 'APROVADA' && nextStages[k].assigneeId) {
-            nextStages[k] = {
-              ...nextStages[k],
-              status: 'APROVADA',
-              approvedAt: new Date().toISOString(),
-            };
-          }
-        });
-        return {
-          ...d,
-          status: 'ENTREGUE',
-          deliveredAt: new Date().toISOString(),
-          stages: nextStages,
+    const nextStages = { ...target.stages };
+    (Object.keys(nextStages) as StageKey[]).forEach((k) => {
+      if (nextStages[k].status !== 'APROVADA' && nextStages[k].assigneeId) {
+        nextStages[k] = {
+          ...nextStages[k],
+          status: 'APROVADA',
+          approvedAt: new Date().toISOString(),
         };
-      }),
-      students: prev.students.map((s) => {
-        if (!contributorIds.has(s.id) && s.location !== demandId) return s;
-        const entregaBadge = `Entrega Oficial: ${target.shortName}`;
-        return {
-          ...s,
-          location: 'LOUNGE',
-          activityBubble: '☕ Lounge',
-          handRaised: null,
-          handNote: undefined,
-          badges: contributorIds.has(s.id) && !s.badges.includes(entregaBadge)
+      }
+    });
+
+    const updatedDemand: Demand = {
+      ...target,
+      status: 'ENTREGUE',
+      deliveredAt: new Date().toISOString(),
+      stages: nextStages,
+    };
+
+    const updatedStudents = state.students.map((s) => {
+      if (!contributorIds.has(s.id) && s.location !== demandId) return s;
+      const entregaBadge = `Entrega Oficial: ${target.shortName}`;
+      return {
+        ...s,
+        location: 'LOUNGE',
+        activityBubble: '☕ Lounge' as const,
+        handRaised: null,
+        handNote: undefined,
+        badges:
+          contributorIds.has(s.id) && !s.badges.includes(entregaBadge)
             ? [...s.badges, entregaBadge]
             : s.badges,
-        };
-      }),
+      };
+    });
+
+    setState((prev) => ({
+      ...prev,
+      demands: prev.demands.map((d) => (d.id === demandId ? updatedDemand : d)),
+      students: updatedStudents,
     }));
+
+    void syncDemandToFirestore(updatedDemand);
+    updatedStudents.forEach((s, idx) => {
+      if (contributorIds.has(s.id) || state.students[idx]?.location === demandId) {
+        void syncStudentToFirestore(s, idx);
+      }
+    });
 
     pushToast(
       `🌸 Entrega Oficial: ${target.shortName}!`,
@@ -650,103 +808,102 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       checklist: [{ id: `${id}-${key}-1`, label: checkLabel, done: false }],
     });
 
-    setState((prev) => {
-      const usedColors = new Set(
-        prev.demands
-          .filter((d) => d.status !== 'ENTREGUE')
-          .map((d) => d.artifacts.ui.primaryColor.trim().toUpperCase()),
-      );
-      const uniquePrimaryColor =
-        PROJECT_THEME_ACCENTS.find((c) => !usedColors.has(c.toUpperCase())) ??
-        PROJECT_THEME_ACCENTS[prev.demands.length % PROJECT_THEME_ACCENTS.length] ??
-        '#0284C7';
+    const usedColors = new Set(
+      state.demands
+        .filter((d) => d.status !== 'ENTREGUE')
+        .map((d) => d.artifacts.ui.primaryColor.trim().toUpperCase())
+    );
+    const uniquePrimaryColor =
+      PROJECT_THEME_ACCENTS.find((c) => !usedColors.has(c.toUpperCase())) ??
+      PROJECT_THEME_ACCENTS[state.demands.length % PROJECT_THEME_ACCENTS.length] ??
+      '#0284C7';
 
-      const newDemand: Demand = {
-        id,
-        title: input.title,
-        shortName: input.shortName || input.title.slice(0, 18),
-        secretaria: input.secretaria,
-        description: input.description,
-        icon: input.icon || 'Sparkles',
-        status: 'ATIVA',
-        createdAt: new Date().toISOString(),
-        stages: {
-          UI_UX: makeStage('UI_UX', 'Interface & Telas', 'Projetar tela principal, cores e formulário.', 'Definir campos essenciais e contraste'),
-          LOGICA_REGRAS: makeStage('LOGICA_REGRAS', 'Lógica & Regras', 'Criar regras Se/Então para decisões do app.', 'Configurar ao menos 1 regra condicional'),
-          IA_DADOS: makeStage('IA_DADOS', 'IA & Conteúdo (Gemini)', 'Configurar persona, instruções e FAQs do assistente.', 'Testar pergunta real no Estúdio IA'),
-          QA_TESTES: makeStage('QA_TESTES', 'Qualidade & Testes', 'Executar testes ponta a ponta no simulador.', 'Validar fluxo completo sem erros'),
+    const newDemand: Demand = {
+      id,
+      title: input.title,
+      shortName: input.shortName || input.title.slice(0, 18),
+      secretaria: input.secretaria,
+      description: input.description,
+      icon: input.icon || 'Sparkles',
+      status: 'ATIVA',
+      createdAt: new Date().toISOString(),
+      stages: {
+        UI_UX: makeStage('UI_UX', 'Interface & Telas', 'Projetar tela principal, cores e formulário.', 'Definir campos essenciais e contraste'),
+        LOGICA_REGRAS: makeStage('LOGICA_REGRAS', 'Lógica & Regras', 'Criar regras Se/Então para decisões do app.', 'Configurar ao menos 1 regra condicional'),
+        IA_DADOS: makeStage('IA_DADOS', 'IA & Conteúdo (Gemini)', 'Configurar persona, instruções e FAQs do assistente.', 'Testar pergunta real no Estúdio IA'),
+        QA_TESTES: makeStage('QA_TESTES', 'Qualidade & Testes', 'Executar testes ponta a ponta no simulador.', 'Validar fluxo completo sem erros'),
+      },
+      artifacts: {
+        ui: {
+          appTitle: input.shortName || input.title,
+          appSubtitle: input.description,
+          primaryColor: uniquePrimaryColor,
+          accentColor: '#10B981',
+          navigationStyle: 'tabs',
+          ctaLabel: 'Enviar Consulta',
+          fields: [
+            { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
+          ],
+          infoCards: [],
+          screens: [
+            {
+              id: `${id}-scr-1`,
+              name: 'Início',
+              title: input.shortName || input.title,
+              subtitle: input.description,
+              fields: [
+                { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
+              ],
+              infoCards: [],
+              ctaLabel: 'Enviar Consulta',
+            },
+            {
+              id: `${id}-scr-2`,
+              name: 'Informações',
+              title: `Sobre — ${input.shortName || input.title}`,
+              subtitle: `Orientações e canais oficiais da ${input.secretaria}.`,
+              fields: [],
+              infoCards: [
+                { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
+              ],
+              ctaLabel: 'Voltar ao Início',
+              ctaTargetScreenId: `${id}-scr-1`,
+            },
+          ],
         },
-        artifacts: {
-          ui: {
-            appTitle: input.shortName || input.title,
-            appSubtitle: input.description,
-            primaryColor: uniquePrimaryColor,
-            accentColor: '#10B981',
-            navigationStyle: 'tabs',
-            ctaLabel: 'Enviar Consulta',
-            fields: [
-              { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
-            ],
-            infoCards: [],
-            screens: [
-              {
-                id: `${id}-scr-1`,
-                name: 'Início',
-                title: input.shortName || input.title,
-                subtitle: input.description,
-                fields: [
-                  { id: 'entrada_principal', label: 'Informação principal', type: 'text', placeholder: 'Digite aqui...' },
-                ],
-                infoCards: [],
-                ctaLabel: 'Enviar Consulta',
-              },
-              {
-                id: `${id}-scr-2`,
-                name: 'Informações',
-                title: `Sobre — ${input.shortName || input.title}`,
-                subtitle: `Orientações e canais oficiais da ${input.secretaria}.`,
-                fields: [],
-                infoCards: [
-                  { id: `${id}-card`, title: input.secretaria, description: 'Atendimento digital municipal — Cianorte/PR', icon: 'Building2' },
-                ],
-                ctaLabel: 'Voltar ao Início',
-                ctaTargetScreenId: `${id}-scr-1`,
-              },
-            ],
-          },
-          logic: {
-            rules: [
-              {
-                id: `${id}-r1`,
-                fieldId: 'entrada_principal',
-                operator: 'nao_vazio',
-                value: '',
-                resultTitle: 'Solicitação Processada',
-                resultMessage: 'Seus dados foram analisados com sucesso pelo sistema municipal.',
-                severity: 'success',
-              },
-            ],
-            defaultMessage: 'Preencha o campo principal para receber uma orientação.',
-          },
-          ai: {
-            assistantName: `Guia ${input.shortName}`,
-            persona: `Assistente digital oficial da ${input.secretaria} de Cianorte.`,
-            systemInstructions: 'Responda com clareza, educação e foco em serviços públicos municipais.',
-            greeting: `Olá! Como posso ajudar você em "${input.title}"?`,
-            faqs: [],
-          },
-          qa: {
-            checklist: [{ id: `${id}-qa1`, label: 'Testar envio do formulário e resposta da IA', checked: false }],
-            notes: '',
-          },
+        logic: {
+          rules: [
+            {
+              id: `${id}-r1`,
+              fieldId: 'entrada_principal',
+              operator: 'nao_vazio',
+              value: '',
+              resultTitle: 'Solicitação Processada',
+              resultMessage: 'Seus dados foram analisados com sucesso pelo sistema municipal.',
+              severity: 'success',
+            },
+          ],
+          defaultMessage: 'Preencha o campo principal para receber uma orientação.',
         },
-      };
+        ai: {
+          assistantName: `Guia ${input.shortName}`,
+          persona: `Assistente digital oficial da ${input.secretaria} de Cianorte.`,
+          systemInstructions: 'Responda com clareza, educação e foco em serviços públicos municipais.',
+          greeting: `Olá! Como posso ajudar você em "${input.title}"?`,
+          faqs: [],
+        },
+        qa: {
+          checklist: [{ id: `${id}-qa1`, label: 'Testar envio do formulário e resposta da IA', checked: false }],
+          notes: '',
+        },
+      },
+    };
 
-      return {
-        ...prev,
-        demands: [newDemand, ...prev.demands],
-      };
-    });
+    setState((prev) => ({
+      ...prev,
+      demands: [newDemand, ...prev.demands],
+    }));
+    void syncDemandToFirestore(newDemand);
 
     pushToast('Nova demanda cadastrada!', `"${input.title}" já está aberta na Sala de Demandas.`, 'success');
   };
@@ -757,7 +914,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       geminiApiKey.trim() ? 'Chave Gemini BYOK salva!' : 'Chave Gemini removida',
       geminiApiKey.trim()
         ? 'Os Tutores Socráticos e Estúdios de IA usarão gemini-2.5-flash ao vivo.'
-        : 'Modo simulado inteligente reativado.',
+        : 'Modo simulado/proxy restaurado.',
       'success'
     );
   };
@@ -772,6 +929,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...prev,
       auditLogs: [newEntry, ...prev.auditLogs],
     }));
+    void syncAuditLogToFirestore(newEntry);
   };
 
   const submitPortalDemand = (
@@ -802,6 +960,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...prev,
       portalSubmissions: [newSub, ...prev.portalSubmissions],
     }));
+    void syncPortalSubmissionToFirestore(newSub);
     pushToast(
       `Demanda enviada! Protocolo ${protocol}`,
       'A IA analisou sua solicitação e a encaminhou para triagem no CEMI 2.',
@@ -814,14 +973,20 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     submissionId: string,
     analysis: DemandAiAnalysis
   ) => {
+    const target = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!target) return;
+    const updated: PortalSubmission = {
+      ...target,
+      analysis,
+      updatedAt: new Date().toISOString(),
+    };
     setState((prev) => ({
       ...prev,
       portalSubmissions: prev.portalSubmissions.map((s) =>
-        s.id === submissionId
-          ? { ...s, analysis, updatedAt: new Date().toISOString() }
-          : s
+        s.id === submissionId ? updated : s
       ),
     }));
+    void syncPortalSubmissionToFirestore(updated);
     pushToast('Análise atualizada!', 'As alterações do Mentor foram salvas na demanda.', 'info');
   };
 
@@ -829,41 +994,48 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     submissionId: string,
     status: PortalSubmissionStatus
   ) => {
+    const target = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!target) return;
+    const updated: PortalSubmission = {
+      ...target,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
     setState((prev) => ({
       ...prev,
       portalSubmissions: prev.portalSubmissions.map((s) =>
-        s.id === submissionId
-          ? { ...s, status, updatedAt: new Date().toISOString() }
-          : s
+        s.id === submissionId ? updated : s
       ),
     }));
+    void syncPortalSubmissionToFirestore(updated);
   };
 
   const requestSubmissionClarification = (submissionId: string, message: string) => {
     const clean = message.trim();
-    if (!clean) return;
+    const target = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!clean || !target) return;
     const now = new Date().toISOString();
+    const updated: PortalSubmission = {
+      ...target,
+      status: 'AJUSTE_SOLICITADO',
+      updatedAt: now,
+      clarifications: [
+        ...target.clarifications,
+        {
+          id: `clr-${Date.now().toString(36)}`,
+          author: 'MENTOR',
+          message: clean,
+          timestamp: now,
+        },
+      ],
+    };
     setState((prev) => ({
       ...prev,
       portalSubmissions: prev.portalSubmissions.map((s) =>
-        s.id === submissionId
-          ? {
-              ...s,
-              status: 'AJUSTE_SOLICITADO',
-              updatedAt: now,
-              clarifications: [
-                ...s.clarifications,
-                {
-                  id: `clr-${Date.now().toString(36)}`,
-                  author: 'MENTOR',
-                  message: clean,
-                  timestamp: now,
-                },
-              ],
-            }
-          : s
+        s.id === submissionId ? updated : s
       ),
     }));
+    void syncPortalSubmissionToFirestore(updated);
     pushToast(
       'Solicitação de esclarecimento registrada!',
       'O solicitante já pode responder diretamente na Consulta de Protocolo.',
@@ -877,30 +1049,31 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updatedAnalysis?: DemandAiAnalysis
   ) => {
     const clean = replyMessage.trim();
-    if (!clean) return;
+    const target = state.portalSubmissions.find((s) => s.id === submissionId);
+    if (!clean || !target) return;
     const now = new Date().toISOString();
+    const updated: PortalSubmission = {
+      ...target,
+      status: 'EM_REVISAO',
+      updatedAt: now,
+      analysis: updatedAnalysis ?? target.analysis,
+      clarifications: [
+        ...target.clarifications,
+        {
+          id: `clr-${Date.now().toString(36)}`,
+          author: 'SOLICITANTE',
+          message: clean,
+          timestamp: now,
+        },
+      ],
+    };
     setState((prev) => ({
       ...prev,
       portalSubmissions: prev.portalSubmissions.map((s) =>
-        s.id === submissionId
-          ? {
-              ...s,
-              status: 'EM_REVISAO',
-              updatedAt: now,
-              analysis: updatedAnalysis ?? s.analysis,
-              clarifications: [
-                ...s.clarifications,
-                {
-                  id: `clr-${Date.now().toString(36)}`,
-                  author: 'SOLICITANTE',
-                  message: clean,
-                  timestamp: now,
-                },
-              ],
-            }
-          : s
+        s.id === submissionId ? updated : s
       ),
     }));
+    void syncPortalSubmissionToFirestore(updated);
     pushToast(
       'Resposta enviada ao CEMI 2!',
       'Seu protocolo retornou para revisão do Mentor.',
@@ -925,6 +1098,12 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       : undefined;
     const built = existing ?? buildOrbitDemandFromSubmission(sub);
     const now = new Date().toISOString();
+    const updatedSub: PortalSubmission = {
+      ...sub,
+      status: 'APROVADA_ORBIT',
+      linkedDemandId: built.id,
+      updatedAt: now,
+    };
 
     setState((prev) => {
       const alreadyExists = prev.demands.some((d) => d.id === built.id);
@@ -932,17 +1111,13 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ...prev,
         demands: alreadyExists ? prev.demands : [built, ...prev.demands],
         portalSubmissions: prev.portalSubmissions.map((s) =>
-          s.id === submissionId
-            ? {
-                ...s,
-                status: 'APROVADA_ORBIT',
-                linkedDemandId: built.id,
-                updatedAt: now,
-              }
-            : s
+          s.id === submissionId ? updatedSub : s
         ),
       };
     });
+
+    void syncDemandToFirestore(built);
+    void syncPortalSubmissionToFirestore(updatedSub);
 
     pushToast(
       `Publicado no Orbit Conecta: ${built.shortName}!`,
@@ -957,6 +1132,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...prev,
       portalSubmissions: INITIAL_PORTAL_SUBMISSIONS,
     }));
+    void resetPortalFirestoreDemo();
     pushToast(
       'Exemplos do Portal restaurados!',
       'Os protocolos de demonstração de Cianorte foram recarregados.',
@@ -968,6 +1144,8 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <OrbitContext.Provider
       value={{
         state,
+        syncStatus,
+        publicPresence,
         toasts,
         dismissToast,
         pushToast,

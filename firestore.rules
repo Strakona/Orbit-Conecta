@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Orbit Conecta — SMED Cianorte / CEMI 2
+// Regras de segurança com separação LGPD / ECA:
+// - Coleções públicas (demands, portalSubmissions, presence) NÃO contêm nomes, PINs ou crachás de alunos.
+// - Coleções internas (students, turmas, auditLogs, meta) exigem sessão autenticada (Anonymous Auth do app ou Staff).
+// - Para endurecer ainda mais após os testes iniciais com Douglas e Jaqueline, habilite Firebase Auth para Staff
+//   e troque `request.auth != null` por verificação de Custom Claims.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Demandas municipais e vitrine pública (leitura e atualização colaborativa do laboratório)
+    match /demands/{demandId} {
+      allow read, write: if true;
+    }
+
+    // 2. Portal de Demandas (escolas/secretarias enviam e consultam protocolos)
+    match /portalSubmissions/{submissionId} {
+      allow read, write: if true;
+    }
+
+    // 3. Presença 100% anonimizada no mapa 2.5D público (sem nome, sem PIN, sem crachá)
+    match /presence/{presenceId} {
+      allow read, write: if true;
+    }
+
+    // 4. Coleções internas CEMI 2 (protegidas contra leitura anônima sem sessão)
+    match /students/{studentId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /turmas/{turmaId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /auditLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /meta/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

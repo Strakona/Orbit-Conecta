@@ -37,13 +37,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
   const [staffPasscode, setStaffPasscode] = useState('');
   const [staffError, setStaffError] = useState('');
 
-  const handleDigit = (digit: string) => {
+  const handleDigit = async (digit: string) => {
     setStudentError('');
     if (pin.length >= 4) return;
     const next = pin + digit;
     setPin(next);
     if (next.length === 4 && badgeCode.trim()) {
-      const ok = loginAsStudentByBadge(badgeCode, next);
+      const ok = await loginAsStudentByBadge(badgeCode, next);
       if (!ok) {
         setStudentError('Código do Crachá ou PIN inválido. Confira com o Professor Mentor.');
       }
@@ -55,7 +55,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
     setPin((p) => p.slice(0, -1));
   };
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!badgeCode.trim()) {
       setStudentError('Informe o código do seu crachá (ex.: ORB-01).');
@@ -65,7 +65,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToPublicPortal }
       setStudentError('Digite os 4 dígitos do seu PIN.');
       return;
     }
-    if (!loginAsStudentByBadge(badgeCode, pin)) {
+    const ok = await loginAsStudentByBadge(badgeCode, pin);
+    if (!ok) {
       setStudentError('Código do Crachá ou PIN inválido. Confira com o Professor Mentor.');
     }
   };

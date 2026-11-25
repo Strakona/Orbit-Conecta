@@ -430,6 +430,24 @@ export async function analyzePortalDemand(params: {
   const fallback = simulateDemandAnalysis(input);
 
   if (!cleanKey) {
+    try {
+      const proxyRes = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'triage', payload: input }),
+      });
+      if (proxyRes.ok) {
+        const data = (await proxyRes.json()) as {
+          configured?: boolean;
+          parsed?: Record<string, unknown> | null;
+        };
+        if (data.configured && data.parsed) {
+          return normalizeParsedTriage(data.parsed, input, fallback);
+        }
+      }
+    } catch {
+      // fallback to local simulator
+    }
     return fallback;
   }
 
@@ -465,6 +483,17 @@ export async function analyzePortalDemand(params: {
     const rawText = response.text?.trim();
     if (!rawText) return fallback;
     const parsed = JSON.parse(rawText) as Record<string, unknown>;
+    return normalizeParsedTriage(parsed, input, fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeParsedTriage(
+  parsed: Record<string, unknown>,
+  input: PortalAnalysisInput,
+  fallback: DemandAiAnalysis
+): DemandAiAnalysis {
 
     const parseStation = (raw: unknown, fb: StationPlan): StationPlan => {
       if (!raw || typeof raw !== 'object') return fb;
@@ -593,9 +622,6 @@ export async function analyzePortalDemand(params: {
       mode: 'GEMINI_LIVE',
       analyzedAt: new Date().toISOString(),
     };
-  } catch {
-    return fallback;
-  }
 }
 
 export function applyDigitalAdaptation(submission: PortalSubmission): DemandAiAnalysis {

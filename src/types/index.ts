@@ -263,6 +263,18 @@ export interface PortalSubmission {
   linkedDemandId?: string;
 }
 
+export type SyncStatus = 'OFFLINE_LOCAL' | 'CONNECTING' | 'ONLINE_FIREBASE';
+
+export interface AnonymousPresence {
+  id: string;
+  uuid: string;
+  turmaId: string;
+  location: string;
+  activeStage?: StageKey;
+  handRaised: HandRaisedType;
+  look: 'm' | 'f';
+}
+
 export interface OrbitState {
   session: SessionUser | null;
   turmas: Turma[];

@@ -30,7 +30,7 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
   onEnterPortal,
   onOpenLabLogin,
 }) => {
-  const { state } = useOrbit();
+  const { state, publicPresence, syncStatus } = useOrbit();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const storeRef = useRef<OfficeStore | null>(null);
   const worldRef = useRef<WorldApi | null>(null);
@@ -60,7 +60,9 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
       theme: 'none',
     });
 
-    store.push(buildHabblaudSnapshot(state, { anonymize: true }));
+    store.push(
+      buildHabblaudSnapshot(state, { anonymize: true, publicPresence })
+    );
 
     return () => {
       world.destroy();
@@ -73,9 +75,11 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
 
   useEffect(() => {
     if (storeRef.current) {
-      storeRef.current.push(buildHabblaudSnapshot(state, { anonymize: true }));
+      storeRef.current.push(
+        buildHabblaudSnapshot(state, { anonymize: true, publicPresence })
+      );
     }
-  }, [state.demands, state.students, state.turmas]);
+  }, [state.demands, state.students, state.turmas, publicPresence]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#0B132B] flex flex-col">
@@ -107,6 +111,21 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
               Modo Apresentação (?demo=1)
             </span>
           )}
+          <span
+            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border backdrop-blur-md ${
+              syncStatus === 'ONLINE_FIREBASE'
+                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
+                : syncStatus === 'CONNECTING'
+                ? 'bg-sky-500/20 border-sky-400/40 text-sky-200'
+                : 'bg-slate-900/75 border-white/15 text-slate-300'
+            }`}
+          >
+            {syncStatus === 'ONLINE_FIREBASE'
+              ? '🟢 Nuvem Firebase Online'
+              : syncStatus === 'CONNECTING'
+              ? '🔵 Conectando Firebase...'
+              : '🟡 Modo Local'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
