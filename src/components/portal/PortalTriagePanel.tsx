@@ -10,6 +10,8 @@ import {
   Edit3,
   FileJson,
   Loader2,
+  Mail,
+  MessageCircle,
   MessageSquarePlus,
   Plus,
   RefreshCw,
@@ -34,6 +36,7 @@ import {
   StageKey,
   ViabilityStatus,
 } from '../../types';
+import { buildApprovalNotificationText } from '../ApprovalNotifyModal';
 
 interface PortalTriagePanelProps {
   isPublicDemoMode?: boolean;
@@ -735,6 +738,60 @@ export const PortalTriagePanel: React.FC<PortalTriagePanelProps> = ({
             </div>
 
             <div className="p-5 overflow-y-auto space-y-4">
+              {(() => {
+                const modalSub = state.portalSubmissions.find(
+                  (s) => s.linkedDemandId === publishedPackage.id
+                );
+                if (!modalSub) return null;
+                const { message, whatsappHref, mailtoHref } =
+                  buildApprovalNotificationText(modalSub);
+                return (
+                  <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 space-y-2.5 text-xs">
+                    <div className="font-bold text-emerald-950 flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        🎉 Notificar solicitante ({modalSub.requesterName} · {modalSub.protocol})
+                      </span>
+                      <span className="text-[11px] font-normal text-emerald-800">
+                        Aviso já ativo na Consulta de Protocolo
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Notificar via WhatsApp</span>
+                      </a>
+                      <a
+                        href={mailtoHref}
+                        className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Notificar via E-mail</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(message);
+                            pushToast('Aviso de aprovação copiado!', undefined, 'success');
+                          } catch {
+                            pushToast('Copie o aviso manualmente', message, 'info');
+                          }
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-emerald-300 text-emerald-950 font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Mensagem</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap gap-2">
                   <button

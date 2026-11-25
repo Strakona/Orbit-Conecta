@@ -12,8 +12,10 @@ import {
   MessageSquareWarning,
   Presentation,
   RotateCcw,
+  Send,
   Share2,
   Sparkles,
+  Users,
   X,
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
@@ -33,12 +35,14 @@ export const ProfessorPanel: React.FC = () => {
     approveStage,
     returnStageWithFeedback,
     activateTestMode,
+    releaseDemandToTurmas,
     deliverDemandOfficially,
     openDemandRoom,
     pushToast,
   } = useOrbit();
 
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>(state.turmas[0]?.id ?? 'turma-1');
+  const [draftTurmaSelection, setDraftTurmaSelection] = useState<Record<string, string[]>>({});
   const [inspectTarget, setInspectTarget] = useState<{
     demand: Demand;
     stageKey: StageKey;
@@ -57,6 +61,22 @@ export const ProfessorPanel: React.FC = () => {
   );
 
   const helpAlerts = state.students.filter((s) => s.handRaised === 'AJUDA');
+  const awaitingRelease = state.demands.filter((d) => d.status === 'AGUARDANDO_PROFESSOR');
+  const releasedDemands = state.demands.filter((d) => d.status !== 'AGUARDANDO_PROFESSOR');
+
+  const getDraftTurmas = (demandId: string): string[] => {
+    const saved = draftTurmaSelection[demandId];
+    return saved !== undefined ? saved : state.turmas.map((t) => t.id);
+  };
+
+  const toggleDraftTurma = (demandId: string, turmaId: string) => {
+    const current = getDraftTurmas(demandId);
+    const next = current.includes(turmaId)
+      ? current.filter((id) => id !== turmaId)
+      : [...current, turmaId];
+    setDraftTurmaSelection((prev) => ({ ...prev, [demandId]: next }));
+  };
+
   const reviewQueue: { demand: Demand; stageKey: StageKey; studentName: string }[] = [];
 
   state.demands.forEach((d) => {
@@ -105,6 +125,137 @@ export const ProfessorPanel: React.FC = () => {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Demandas Aprovadas pela Coordenação aguardando o Professor liberar para as Turmas */}
+      <div
+        className={`rounded-2xl border p-5 shadow-sm space-y-3 ${
+          awaitingRelease.length > 0
+            ? 'bg-gradient-to-br from-sky-50 via-white to-indigo-50 border-sky-300'
+            : 'bg-white border-slate-200'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                awaitingRelease.length > 0
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-base text-slate-900">
+                Demandas Aprovadas pela Coordenação — Liberar para as Turmas ({awaitingRelease.length})
+              </h3>
+              <p className="text-xs text-slate-600">
+                Escolha para quais Turmas AH/SD cada demanda aprovada será aberta na Sala de
+                Demandas e no Mapa 2.5D.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {awaitingRelease.length === 0 ? (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-500">
+            Nenhuma demanda aguardando liberação no momento. Quando a Coordenação SMED aprovar uma
+            demanda, ela aparecerá aqui para você escolher as turmas.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            {awaitingRelease.map((demand) => {
+              const chosenIds = getDraftTurmas(demand.id);
+              const allSelected = chosenIds.length === state.turmas.length;
+
+              return (
+                <div
+                  key={demand.id}
+                  className="bg-white rounded-2xl border border-sky-200 p-4 shadow-xs flex flex-col justify-between gap-3.5"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                        {demand.secretaria}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold">
+                        Aguardando Turmas
+                      </span>
+                    </div>
+                    <h4 className="font-display font-bold text-sm text-slate-900">
+                      {demand.title}
+                    </h4>
+                    <p className="text-xs text-slate-600 line-clamp-2">{demand.description}</p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        Quais turmas poderão escolher esta demanda?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDraftTurmaSelection((prev) => ({
+                            ...prev,
+                            [demand.id]: state.turmas.map((t) => t.id),
+                          }))
+                        }
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer ${
+                          allSelected
+                            ? 'bg-sky-100 text-sky-800'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        Todas as Turmas
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {state.turmas.map((turma) => {
+                        const checked = chosenIds.includes(turma.id);
+                        return (
+                          <button
+                            key={turma.id}
+                            type="button"
+                            onClick={() => toggleDraftTurma(demand.id, turma.id)}
+                            className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition cursor-pointer ${
+                              checked
+                                ? 'bg-sky-600 border-sky-600 text-white shadow-xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {checked ? '✓ ' : ''}
+                            {turma.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={chosenIds.length === 0}
+                      onClick={() => releaseDemandToTurmas(demand.id, chosenIds)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>
+                        {chosenIds.length === 0
+                          ? 'Selecione ao menos 1 turma'
+                          : allSelected
+                          ? 'Liberar para Todas as Turmas'
+                          : `Liberar para ${chosenIds.length} ${
+                              chosenIds.length === 1 ? 'Turma' : 'Turmas'
+                            }`}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Priority Queue: Help vs Ready for Evaluation */}
@@ -274,13 +425,27 @@ export const ProfessorPanel: React.FC = () => {
           </p>
         </div>
 
+        {releasedDemands.length === 0 ? (
+          <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-500 text-center">
+            Nenhuma demanda liberada para as turmas ainda. Libere uma demanda aprovada no bloco
+            acima para que os alunos possam escolhê-la.
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {state.demands.map((demand) => {
+          {releasedDemands.map((demand) => {
             const approvedCount = STAGE_ORDER.filter(
               (k) => demand.stages[k].status === 'APROVADA'
             ).length;
             const isDelivered = demand.status === 'ENTREGUE';
             const isTestMode = demand.status === 'MODO_TESTE';
+            const turmaLabels =
+              !demand.releasedTurmaIds ||
+              demand.releasedTurmaIds.length === 0 ||
+              demand.releasedTurmaIds.length >= state.turmas.length
+                ? 'Todas as Turmas'
+                : demand.releasedTurmaIds
+                    .map((id) => state.turmas.find((t) => t.id === id)?.name ?? id)
+                    .join(', ');
 
             return (
               <div
@@ -296,8 +461,11 @@ export const ProfessorPanel: React.FC = () => {
                       <h4 className="font-display font-bold text-sm text-slate-900">
                         {demand.title}
                       </h4>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 text-[10px] font-semibold">
+                        Turmas: {turmaLabels}
+                      </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-700">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-700 shrink-0">
                       {approvedCount}/4 aprovadas
                     </span>
                   </div>
@@ -392,6 +560,7 @@ export const ProfessorPanel: React.FC = () => {
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Student & Badge Registration + Bulk Import (no PIN reset / delete) */}

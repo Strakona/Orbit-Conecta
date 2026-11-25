@@ -30,6 +30,8 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
 
   const [requesterName, setRequesterName] = useState('');
   const [requesterRole, setRequesterRole] = useState('');
+  const [requesterWhatsapp, setRequesterWhatsapp] = useState('');
+  const [requesterEmail, setRequesterEmail] = useState('');
   const [organization, setOrganization] = useState(CIANORTE_ORGANIZATIONS[0].label);
   const [organizationType, setOrganizationType] = useState<'ESCOLA' | 'SECRETARIA'>('ESCOLA');
   const [title, setTitle] = useState('');
@@ -51,6 +53,8 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
     if (kind === 'ESCOLA_DIGITAL') {
       setRequesterName('Profa. Juliana Martins');
       setRequesterRole('Diretora Escolar');
+      setRequesterWhatsapp('(44) 99999-0000');
+      setRequesterEmail('escola@cianorte.pr.gov.br');
       setOrganization('Escola Municipal Castro Alves');
       setOrganizationType('ESCOLA');
       setTitle('Agenda Digital de Reforço e Apoio Escolar');
@@ -64,6 +68,8 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
     } else {
       setRequesterName('Marcos Antônio');
       setRequesterRole('Coordenador de Pátio');
+      setRequesterWhatsapp('(44) 99999-1111');
+      setRequesterEmail('meioambiente@cianorte.pr.gov.br');
       setOrganization('Secretaria Municipal de Meio Ambiente');
       setOrganizationType('SECRETARIA');
       setTitle('Totem Físico com Sensor e Balança Arduino na Coleta');
@@ -85,6 +91,8 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
     const input = {
       requesterName: requesterName.trim() || 'Servidor Municipal',
       requesterRole: requesterRole.trim() || 'Gestor(a)',
+      requesterWhatsapp: requesterWhatsapp.trim() || undefined,
+      requesterEmail: requesterEmail.trim() || undefined,
       organization,
       organizationType,
       title: title.trim(),
@@ -333,6 +341,37 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              WhatsApp para aviso (com DDD)
+            </label>
+            <input
+              type="tel"
+              value={requesterWhatsapp}
+              onChange={(e) => setRequesterWhatsapp(e.target.value)}
+              placeholder="Ex.: (44) 99999-8888"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              E-mail para acompanhamento
+            </label>
+            <input
+              type="email"
+              value={requesterEmail}
+              onChange={(e) => setRequesterEmail(e.target.value)}
+              placeholder="Ex.: diretora@cianorte.pr.gov.br"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-500 -mt-2">
+          Informe WhatsApp ou E-mail para receber o aviso assim que a Coordenação aprovar sua demanda para produção.
+        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
           <div className="sm:col-span-8">

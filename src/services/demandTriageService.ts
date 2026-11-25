@@ -12,6 +12,8 @@ import {
 export interface PortalAnalysisInput {
   requesterName: string;
   requesterRole: string;
+  requesterWhatsapp?: string;
+  requesterEmail?: string;
   organization: string;
   organizationType: 'ESCOLA' | 'SECRETARIA';
   title: string;
@@ -712,7 +714,8 @@ export function buildOrbitDemandFromSubmission(submission: PortalSubmission): De
     secretaria: submission.organization,
     description: `${submission.problemDescription} (Impacto esperado: ${submission.targetAudienceAndImpact})`,
     icon: submission.organizationType === 'ESCOLA' ? 'BookOpen' : 'Sparkles',
-    status: 'ATIVA',
+    status: 'AGUARDANDO_PROFESSOR',
+    releasedTurmaIds: [],
     createdAt: now,
     stages: {
       UI_UX: makeStage('UI_UX'),

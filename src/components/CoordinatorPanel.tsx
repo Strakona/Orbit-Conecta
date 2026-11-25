@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
+  ClipboardCheck,
   Eye,
   EyeOff,
   FileSearch,
   KeyRound,
   PlusCircle,
   Printer,
+  Rocket,
   Settings,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Users,
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META, TUTOR_PERSONAS } from '../data/seedData';
-import { StageKey } from '../types';
+import { Demand, PortalSubmission, StageKey } from '../types';
 import { isDemoMode } from '../utils/demoMode';
+import { ApprovalNotifyModal } from './ApprovalNotifyModal';
 import { BadgePrintModal } from './BadgePrintModal';
 import { StudentBadgeManager } from './StudentBadgeManager';
 
@@ -29,9 +34,20 @@ export const CoordinatorPanel: React.FC = () => {
     createStaffMember,
     deleteStaffMember,
     purgeProductionDemoData,
+    approveAndPublishSubmission,
+    setActiveTab,
+    openDemandRoom,
   } = useOrbit();
   const demo = isDemoMode();
   const [purgingDemo, setPurgingDemo] = useState(false);
+  const [approvalNotifyTarget, setApprovalNotifyTarget] = useState<{
+    submission: PortalSubmission;
+    demand: Demand;
+  } | null>(null);
+
+  const pendingApprovals = state.portalSubmissions.filter(
+    (s) => s.status === 'PENDENTE_TRIAGEM' || s.status === 'EM_REVISAO'
+  );
 
   // New Demand Form
   const [title, setTitle] = useState('');
@@ -166,6 +182,152 @@ export const CoordinatorPanel: React.FC = () => {
               : '🟡 Modo Local (Configure .env para Firebase)'}
           </span>
         </div>
+      </div>
+
+      {/* Pending Approval Queue (Live from Portal de Demandas) */}
+      <div
+        className={`rounded-2xl border p-5 shadow-sm space-y-3 ${
+          pendingApprovals.length > 0
+            ? 'bg-gradient-to-br from-amber-50 via-white to-sky-50 border-amber-300'
+            : 'bg-white border-slate-200'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                pendingApprovals.length > 0
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              <ClipboardCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-base text-slate-900">
+                Demandas Aguardando Aprovação ({pendingApprovals.length})
+              </h3>
+              <p className="text-xs text-slate-600">
+                Pedidos enviados pelo Portal Público aparecem aqui na hora para você aprovar e
+                avisar o solicitante.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('PORTAL')}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer"
+          >
+            Abrir Triagem Completa
+          </button>
+        </div>
+
+        {pendingApprovals.length === 0 ? (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-500">
+            Nenhuma nova demanda pendente de aprovação no momento. Assim que uma escola ou secretaria
+            enviar um pedido, ele aparecerá aqui em tempo real.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingApprovals.map((sub) => {
+              const isHardware = sub.analysis.viabilityStatus === 'FORA_DE_ESCOPO_HARDWARE';
+              return (
+                <div
+                  key={sub.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between gap-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-slate-900 text-white">
+                        {sub.protocol}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                          isHardware
+                            ? 'bg-rose-100 text-rose-900 border-rose-300'
+                            : sub.analysis.viabilityStatus === 'VIAVEL_COM_ADAPTACAO'
+                            ? 'bg-sky-100 text-sky-900 border-sky-300'
+                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        }`}
+                      >
+                        {isHardware ? (
+                          <AlertTriangle className="w-3 h-3" />
+                        ) : (
+                          <Sparkles className="w-3 h-3" />
+                        )}
+                        <span>
+                          {isHardware
+                            ? 'Requer Adaptação Digital'
+                            : sub.analysis.viabilityStatus === 'VIAVEL_COM_ADAPTACAO'
+                            ? 'Viável com Adaptação'
+                            : 'Altamente Viável'}
+                        </span>
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-bold uppercase text-sky-700">
+                        {sub.organization}
+                      </div>
+                      <h4 className="font-display font-bold text-sm text-slate-900">{sub.title}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Solicitante: <strong>{sub.requesterName}</strong> ({sub.requesterRole})
+                        {sub.requesterWhatsapp ? ` · 📱 ${sub.requesterWhatsapp}` : ''}
+                        {sub.requesterEmail ? ` · ✉️ ${sub.requesterEmail}` : ''}
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-slate-600 line-clamp-2">
+                      {sub.analysis.friendlySummary}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('PORTAL')}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold cursor-pointer"
+                    >
+                      Revisar Estações
+                    </button>
+
+                    {isHardware ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('PORTAL')}
+                        className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold cursor-pointer"
+                      >
+                        Adaptar na Triagem
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const built = approveAndPublishSubmission(sub.id);
+                          if (built) {
+                            const updatedSub: PortalSubmission = {
+                              ...sub,
+                              status: 'APROVADA_ORBIT',
+                              linkedDemandId: built.id,
+                              approvedAt: new Date().toISOString(),
+                              approvedBy: state.session?.name ?? 'Coordenação SMED',
+                            };
+                            setApprovalNotifyTarget({ submission: updatedSub, demand: built });
+                          }
+                        }}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <Rocket className="w-3.5 h-3.5" />
+                        <span>Aprovar & Liberar Produção</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Top Grid: Create Demand + BYOK */}
@@ -621,6 +783,13 @@ export const CoordinatorPanel: React.FC = () => {
       turmas={state.turmas}
       initialFilterTurmaId={badgeTurmaFilter}
       singleStudentId={printSingleStudentId}
+    />
+
+    <ApprovalNotifyModal
+      submission={approvalNotifyTarget?.submission ?? null}
+      demand={approvalNotifyTarget?.demand ?? null}
+      onClose={() => setApprovalNotifyTarget(null)}
+      onOpenRoom={(demandId) => openDemandRoom(demandId)}
     />
     </>
   );

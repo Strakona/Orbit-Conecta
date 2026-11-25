@@ -4,7 +4,7 @@ export type StageKey = 'UI_UX' | 'LOGICA_REGRAS' | 'IA_DADOS' | 'QA_TESTES';
 
 export type StageStatus = 'DISPONIVEL' | 'EM_DESENVOLVIMENTO' | 'EM_REVISAO' | 'APROVADA';
 
-export type DemandStatus = 'ATIVA' | 'MODO_TESTE' | 'ENTREGUE';
+export type DemandStatus = 'AGUARDANDO_PROFESSOR' | 'ATIVA' | 'MODO_TESTE' | 'ENTREGUE';
 
 export type TutorPersonaId =
   | 'GERAL'
@@ -151,6 +151,7 @@ export interface Demand {
   description: string;
   icon: string;
   status: DemandStatus;
+  releasedTurmaIds?: string[];
   createdAt: string;
   deliveredAt?: string;
   stages: Record<StageKey, DemandStage>;
@@ -255,6 +256,8 @@ export interface PortalSubmission {
   protocol: string;
   requesterName: string;
   requesterRole: string;
+  requesterWhatsapp?: string;
+  requesterEmail?: string;
   organization: string;
   organizationType: 'ESCOLA' | 'SECRETARIA';
   title: string;
@@ -264,6 +267,9 @@ export interface PortalSubmission {
   status: PortalSubmissionStatus;
   createdAt: string;
   updatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  approvalNote?: string;
   analysis: DemandAiAnalysis;
   clarifications: ClarificationEntry[];
   linkedDemandId?: string;

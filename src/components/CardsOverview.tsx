@@ -3,6 +3,7 @@ import { ArrowRight, Award, ClipboardList, Flower2, Presentation } from 'lucide-
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META } from '../data/seedData';
 import { Demand, StageKey } from '../types';
+import { isDemandVisibleToStudent } from '../utils/demandVisibility';
 import { PixelAvatar } from './PixelAvatar';
 
 interface CardsOverviewProps {
@@ -17,6 +18,13 @@ export const CardsOverview: React.FC<CardsOverviewProps> = ({
   onOpenTestAuditorium,
 }) => {
   const { state, openDemandRoom, setActiveTab } = useOrbit();
+  const isStudent = state.session?.role === 'ALUNO';
+  const currentStudent = isStudent
+    ? state.students.find((s) => s.id === state.session?.studentId)
+    : undefined;
+  const visibleDemands = isStudent
+    ? state.demands.filter((d) => isDemandVisibleToStudent(d, currentStudent?.turmaId))
+    : state.demands;
 
   return (
     <div className="space-y-4">
@@ -38,22 +46,24 @@ export const CardsOverview: React.FC<CardsOverviewProps> = ({
         </button>
       </div>
 
-      {state.demands.length === 0 ? (
+      {visibleDemands.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
           <p className="text-sm font-semibold text-slate-800">
-            Nenhuma demanda publicada no laboratório ainda.
+            Nenhuma demanda liberada no laboratório para você ainda.
           </p>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Envie uma demanda pelo Portal Público e aprove-a na Triagem, ou cadastre uma nova
-            demanda diretamente no Painel da Coordenação.
+            {isStudent
+              ? 'Assim que o Professor Mentor liberar uma demanda para a sua turma, ela aparecerá aqui.'
+              : 'Envie uma demanda pelo Portal Público e aprove-a na Coordenação, depois libere no Painel Mentor.'}
           </p>
         </div>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {state.demands.map((demand) => {
+        {visibleDemands.map((demand) => {
           const roomStudents = state.students.filter((s) => s.location === demand.id);
           const isDelivered = demand.status === 'ENTREGUE';
           const isTestMode = demand.status === 'MODO_TESTE';
+          const isAwaitingProfessor = demand.status === 'AGUARDANDO_PROFESSOR';
 
           return (
             <div
@@ -86,6 +96,10 @@ export const CardsOverview: React.FC<CardsOverviewProps> = ({
                     <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1 shrink-0">
                       <Presentation className="w-3.5 h-3.5" />
                       Modo Teste
+                    </span>
+                  ) : isAwaitingProfessor ? (
+                    <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold shrink-0">
+                      Aguardando Professor
                     </span>
                   ) : (
                     <span className="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold shrink-0">

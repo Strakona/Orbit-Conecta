@@ -33,6 +33,10 @@ export const Header: React.FC = () => {
   const demo = isDemoMode();
 
   const pendingAlertsCount = state.students.filter((s) => s.handRaised !== null).length;
+  const awaitingProfessorCount = state.demands.filter(
+    (d) => d.status === 'AGUARDANDO_PROFESSOR'
+  ).length;
+  const mentorBadgeCount = pendingAlertsCount + awaitingProfessorCount;
   const deliveredCount = state.demands.filter((d) => d.status === 'ENTREGUE').length;
   const pendingTriageCount = state.portalSubmissions.filter(
     (s) => s.status === 'PENDENTE_TRIAGEM' || s.status === 'EM_REVISAO'
@@ -131,9 +135,9 @@ export const Header: React.FC = () => {
             >
               <GraduationCap className="w-3.5 h-3.5" />
               <span>Painel Mentor</span>
-              {pendingAlertsCount > 0 && (
+              {mentorBadgeCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold">
-                  {pendingAlertsCount}
+                  {mentorBadgeCount}
                 </span>
               )}
             </button>
@@ -150,6 +154,11 @@ export const Header: React.FC = () => {
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Gestão & BYOK</span>
+              {pendingTriageCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400 text-slate-950 font-bold">
+                  {pendingTriageCount}
+                </span>
+              )}
             </button>
           )}
 

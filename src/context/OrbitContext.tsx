@@ -198,6 +198,7 @@ interface OrbitContextValue {
   approveStage: (demandId: string, stageKey: StageKey, badgeName?: string) => void;
   returnStageWithFeedback: (demandId: string, stageKey: StageKey, feedback: string) => void;
   activateTestMode: (demandId: string) => void;
+  releaseDemandToTurmas: (demandId: string, turmaIds: string[]) => void;
   deliverDemandOfficially: (demandId: string) => void;
   createDemand: (input: {
     title: string;
@@ -218,7 +219,7 @@ interface OrbitContextValue {
     replyMessage: string,
     updatedAnalysis?: DemandAiAnalysis
   ) => void;
-  approveAndPublishSubmission: (submissionId: string) => Demand | null;
+  approveAndPublishSubmission: (submissionId: string, approvalNote?: string) => Demand | null;
   confirmDeliveryReceipt: (submissionId: string, rating: number, comment: string) => void;
   resetPortalDemoData: () => void;
   createStudent: (input: { name: string; turmaId: string; pin?: string }) => Student;
@@ -838,6 +839,34 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   };
 
+  const releaseDemandToTurmas = (demandId: string, turmaIds: string[]) => {
+    const target = state.demands.find((d) => d.id === demandId);
+    if (!target) return;
+    const cleanTurmas = turmaIds.length > 0 ? turmaIds : state.turmas.map((t) => t.id);
+    const updated: Demand = {
+      ...target,
+      status: target.status === 'AGUARDANDO_PROFESSOR' ? 'ATIVA' : target.status,
+      releasedTurmaIds: cleanTurmas,
+    };
+    setState((prev) => ({
+      ...prev,
+      demands: prev.demands.map((d) => (d.id === demandId ? updated : d)),
+    }));
+    void syncDemandToFirestore(updated);
+
+    const isAll = cleanTurmas.length >= state.turmas.length;
+    const turmaNames = isAll
+      ? 'Todas as Turmas AH/SD'
+      : cleanTurmas
+          .map((id) => state.turmas.find((t) => t.id === id)?.name ?? id)
+          .join(', ');
+    pushToast(
+      `Demanda liberada: ${target.shortName}!`,
+      `Disponível na Sala de Demandas e Mapa 2.5D para: ${turmaNames}.`,
+      'success'
+    );
+  };
+
   const deliverDemandOfficially = (demandId: string) => {
     const target = state.demands.find((d) => d.id === demandId);
     if (!target) return;
@@ -947,7 +976,8 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       secretaria: input.secretaria,
       description: input.description,
       icon: input.icon || 'Sparkles',
-      status: 'ATIVA',
+      status: 'AGUARDANDO_PROFESSOR',
+      releasedTurmaIds: [],
       createdAt: new Date().toISOString(),
       stages: {
         UI_UX: makeStage('UI_UX', 'Interface & Telas', 'Projetar tela principal, cores e formulário.', 'Definir campos essenciais e contraste'),
@@ -1027,7 +1057,11 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }));
     void syncDemandToFirestore(newDemand);
 
-    pushToast('Nova demanda cadastrada!', `"${input.title}" já está aberta na Sala de Demandas.`, 'success');
+    pushToast(
+      'Demanda enviada ao Professor Mentor!',
+      `"${input.title}" já está no Painel Mentor para liberação às Turmas AH/SD.`,
+      'success'
+    );
   };
 
   const setGeminiApiKey = (geminiApiKey: string) => {
@@ -1070,6 +1104,12 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       protocol,
       requesterName: input.requesterName,
       requesterRole: input.requesterRole,
+      ...(input.requesterWhatsapp?.trim()
+        ? { requesterWhatsapp: input.requesterWhatsapp.trim() }
+        : {}),
+      ...(input.requesterEmail?.trim()
+        ? { requesterEmail: input.requesterEmail.trim() }
+        : {}),
       organization: input.organization,
       organizationType: input.organizationType,
       title: input.title,
@@ -1207,7 +1247,10 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   };
 
-  const approveAndPublishSubmission = (submissionId: string): Demand | null => {
+  const approveAndPublishSubmission = (
+    submissionId: string,
+    approvalNote?: string
+  ): Demand | null => {
     const sub = state.portalSubmissions.find((s) => s.id === submissionId);
     if (!sub) return null;
     if (sub.analysis.viabilityStatus === 'FORA_DE_ESCOPO_HARDWARE') {
@@ -1229,6 +1272,11 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       status: 'APROVADA_ORBIT',
       linkedDemandId: built.id,
       updatedAt: now,
+      approvedAt: now,
+      approvedBy: state.session?.name ?? 'Coordenação SMED',
+      approvalNote:
+        approvalNote?.trim() ||
+        'Sua demanda foi aprovada pela Coordenação SMED e já entrou em produção com as Turmas AH/SD no CEMI 2!',
     };
 
     setState((prev) => {
@@ -1246,8 +1294,8 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     void syncPortalSubmissionToFirestore(updatedSub);
 
     pushToast(
-      `Publicado no Orbit Conecta: ${built.shortName}!`,
-      'A nova sala já aparece no escritório 2.5D e na Sala de Demandas.',
+      `Aprovada e enviada ao Professor Mentor: ${built.shortName}!`,
+      'Agora o Professor Mentor escolhe quais Turmas AH/SD poderão trabalhar nesta demanda.',
       'success'
     );
     return built;
@@ -1526,6 +1574,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         approveStage,
         returnStageWithFeedback,
         activateTestMode,
+        releaseDemandToTurmas,
         deliverDemandOfficially,
         createDemand,
         setGeminiApiKey,

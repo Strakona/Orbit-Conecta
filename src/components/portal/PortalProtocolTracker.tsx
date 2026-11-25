@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Check,
   CheckCircle2,
@@ -137,6 +137,25 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
   const activeStep = activeSubmission
     ? computeTimelineStep(activeSubmission, linkedDemand)
     : 0;
+
+  const prevStatusRef = useRef<{ id: string; status: string } | null>(null);
+  useEffect(() => {
+    if (!activeSubmission) return;
+    const prev = prevStatusRef.current;
+    if (
+      prev &&
+      prev.id === activeSubmission.id &&
+      prev.status !== 'APROVADA_ORBIT' &&
+      activeSubmission.status === 'APROVADA_ORBIT'
+    ) {
+      pushToast(
+        '🎉 Sua demanda foi aprovada!',
+        'A Coordenação SMED liberou sua demanda para produção no CEMI 2.',
+        'success'
+      );
+    }
+    prevStatusRef.current = { id: activeSubmission.id, status: activeSubmission.status };
+  }, [activeSubmission, pushToast]);
 
   const handleReplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,6 +332,48 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                 {activeSubmission.analysis.friendlySummary}
               </p>
             </div>
+
+            {/* Live Approval Notification Banner (while in production or test mode) */}
+            {activeSubmission.status === 'APROVADA_ORBIT' &&
+              linkedDemand?.status !== 'ENTREGUE' && (
+                <div className="rounded-2xl border-2 border-sky-300 bg-gradient-to-r from-sky-50 to-emerald-50 p-4 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-display font-bold text-sm text-sky-950 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        🎉 Demanda Aprovada — Vai ser produzida pelas Turmas AH/SD no CEMI 2!
+                      </span>
+                    </div>
+                    {activeSubmission.approvedAt && (
+                      <span className="text-[11px] font-semibold text-sky-800">
+                        Aprovada em{' '}
+                        {new Date(activeSubmission.approvedAt).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    {activeSubmission.approvalNote ??
+                      'Sua demanda já foi liberada na Sala de Demandas do Orbit Conecta para criação pelos estudantes das Turmas AH/SD.'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                    {activeSubmission.approvedBy && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-sky-200 font-semibold">
+                        Aprovada por: {activeSubmission.approvedBy}
+                      </span>
+                    )}
+                    {linkedDemand && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-emerald-200 font-semibold text-emerald-800">
+                        Sala ativa: {linkedDemand.shortName}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
             {/* Official Delivery Card + Requester Confirmation */}
             {linkedDemand?.status === 'ENTREGUE' && (

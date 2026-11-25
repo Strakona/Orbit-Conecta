@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, ClipboardList, Clock, Hand, Sparkles, X } fro
 import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META } from '../data/seedData';
 import { StageKey, StageStatus } from '../types';
+import { isDemandVisibleToStudent } from '../utils/demandVisibility';
 import { PixelAvatar } from './PixelAvatar';
 
 interface DemandBoardModalProps {
@@ -37,7 +38,15 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const isStudent = state.session?.role === 'ALUNO';
-  const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
+  const currentStudent = isStudent
+    ? state.students.find((s) => s.id === state.session?.studentId)
+    : undefined;
+  const activeDemands = state.demands.filter(
+    (d) =>
+      d.status !== 'ENTREGUE' &&
+      d.status !== 'AGUARDANDO_PROFESSOR' &&
+      (!isStudent || isDemandVisibleToStudent(d, currentStudent?.turmaId))
+  );
 
   return (
     <div
@@ -73,7 +82,18 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
 
         {/* Demands List */}
         <div className="p-5 overflow-y-auto space-y-5 bg-slate-50">
-          {activeDemands.map((demand) => (
+          {activeDemands.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
+              <p className="font-display font-bold text-sm text-slate-900">
+                Nenhuma demanda liberada para a sua turma no momento
+              </p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Aguarde o Professor Mentor liberar uma nova demanda aprovada para que sua turma possa
+                escolher as bancadas.
+              </p>
+            </div>
+          ) : (
+            activeDemands.map((demand) => (
             <div
               key={demand.id}
               className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"
@@ -189,7 +209,8 @@ export const DemandBoardModal: React.FC<DemandBoardModalProps> = ({ isOpen, onCl
                 })}
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
     </div>

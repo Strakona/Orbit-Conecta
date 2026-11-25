@@ -10,6 +10,7 @@ import type {
   TaskItem,
 } from '../habblaud/shared/types';
 import { AnonymousPresence, Demand, OrbitState, StageKey } from '../types';
+import { isDemandVisibleToStudent } from '../utils/demandVisibility';
 
 const STAGE_ORDER: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
@@ -49,7 +50,9 @@ export function resolveDemandThemeMap(
 ): Map<string, { themeIndex: number; accent: string }> {
   const map = new Map<string, { themeIndex: number; accent: string }>();
   const used = new Set<number>();
-  const activeDemands = demands.filter((d) => d.status !== 'ENTREGUE');
+  const activeDemands = demands.filter(
+    (d) => d.status === 'ATIVA' || d.status === 'MODO_TESTE'
+  );
 
   for (let i = 0; i < activeDemands.length; i++) {
     const d = activeDemands[i];
@@ -111,8 +114,16 @@ export function buildHabblaudSnapshot(
 ): OfficeSnapshot {
   const anonymize = Boolean(options?.anonymize);
   const now = Date.now();
-  const activeDemands = state.demands.filter((d) => d.status !== 'ENTREGUE');
-  const themeMap = resolveDemandThemeMap(state.demands);
+  const isStudentSession = !anonymize && state.session?.role === 'ALUNO';
+  const currentStudent = isStudentSession
+    ? state.students.find((s) => s.id === state.session?.studentId)
+    : undefined;
+  const activeDemands = state.demands.filter(
+    (d) =>
+      (d.status === 'ATIVA' || d.status === 'MODO_TESTE') &&
+      (!isStudentSession || isDemandVisibleToStudent(d, currentStudent?.turmaId))
+  );
+  const themeMap = resolveDemandThemeMap(activeDemands);
   const fallbackRoomId = activeDemands[0]?.id ?? 'sala-demandas';
 
   const rooms: RoomInfo[] = activeDemands.map((demand, idx) => ({

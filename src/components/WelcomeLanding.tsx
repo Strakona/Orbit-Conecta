@@ -38,7 +38,9 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
   const [peekOffice, setPeekOffice] = useState(false);
   const demo = isDemoMode();
 
-  const activeRoomsCount = state.demands.filter((d) => d.status !== 'ENTREGUE').length;
+  const activeRoomsCount = state.demands.filter(
+    (d) => d.status === 'ATIVA' || d.status === 'MODO_TESTE'
+  ).length;
   const deliveredCount = state.demands.filter((d) => d.status === 'ENTREGUE').length;
 
   useEffect(() => {
