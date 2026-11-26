@@ -45,5 +45,31 @@ service cloud.firestore {
     match /meta/{docId} {
       allow read, write: if true;
     }
+
+    // 5. Coleções unificadas — Ilha dos Inventores (gestão pedagógica autenticada + entrada de tablets por código)
+    match /schools/{schoolId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /classes/{classId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /reminders/{reminderId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /sessions/{sessionId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Tablets ingressam via código de 6 caracteres (sem login prévio)
+    match /classCodes/{code} {
+      allow read, write: if true;
+
+      match /explorers/{sessionId} {
+        allow read, write: if true;
+      }
+    }
   }
 }
