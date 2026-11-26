@@ -1,16 +1,18 @@
 rules_version = '2';
 
-// Orbit Conecta — SMED Cianorte / CEMI 2
-// Regras de segurança com separação LGPD / ECA:
-// - Coleções públicas (demands, portalSubmissions, presence) NÃO contêm nomes, PINs ou crachás de alunos.
-// - Coleções internas (students, turmas, auditLogs, meta) exigem sessão autenticada (Anonymous Auth do app ou Staff).
-// - Para endurecer ainda mais após os testes iniciais com Douglas e Jaqueline, habilite Firebase Auth para Staff
-//   e troque `request.auth != null` por verificação de Custom Claims.
+// Orbit Conecta â€” SMED Cianorte / CEMI 2
+// Regras de seguranÃ§a com separaÃ§Ã£o LGPD / ECA:
+// - ColeÃ§Ãµes pÃºblicas (demands, portalSubmissions, presence) NÃƒO contÃªm nomes, PINs ou crachÃ¡s de alunos.
+// - ColeÃ§Ãµes internas (students, turmas, auditLogs, meta) exigem sessÃ£o autenticada (Anonymous Auth do app ou Staff).
+// - Para endurecer ainda mais apÃ³s os testes iniciais com Douglas e Jaqueline, habilite Firebase Auth para Staff
+//   e troque `request.auth != null` por verificaÃ§Ã£o de Custom Claims.
+// - Ilha dos Inventores: dados de crianÃ§as ficam em coleÃ§Ãµes com regras estritas (professor verificado via Google
+//   ou cÃ³digo de turma). SessÃµes anÃ´nimas do Orbit Conecta NÃƒO tÃªm acesso a essas coleÃ§Ãµes.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 1. Demandas municipais e vitrine pública (leitura e atualização colaborativa do laboratório)
+    // 1. Demandas municipais e vitrine pÃºblica (leitura e atualizaÃ§Ã£o colaborativa do laboratÃ³rio)
     match /demands/{demandId} {
       allow read, write: if true;
     }
@@ -20,12 +22,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // 3. Presença 100% anonimizada no mapa 2.5D público (sem nome, sem PIN, sem crachá)
+    // 3. PresenÃ§a 100% anonimizada no mapa 2.5D pÃºblico (sem nome, sem PIN, sem crachÃ¡)
     match /presence/{presenceId} {
       allow read, write: if true;
     }
 
-    // 4. Coleções internas CEMI 2 (protegidas contra leitura anônima sem sessão)
+    // 4. ColeÃ§Ãµes internas CEMI 2 (protegidas contra leitura anÃ´nima sem sessÃ£o)
     match /students/{studentId} {
       allow read, write: if request.auth != null;
     }
@@ -46,41 +48,483 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // 5. Coleções unificadas — Ilha dos Inventores (gestão pedagógica autenticada + entrada de tablets por código)
+    // 5. Professores autorizados na Ilha dos Inventores (id do documento = e-mail em minÃºsculas)
+    // Temporariamente FECHADO atÃ© que a Coordenadora entre com Google. Regra futura: permitir escrita
+    // apenas ao e-mail verificado da Coordenadora e permitir que o professor faÃ§a `get` somente do prÃ³prio
+    // documento, comparando request.auth.token.email com o id do documento.
+    match /ilhaTeachers/{email} {
+      allow read, write: if false;
+    }
+
+    // 6. Ilha dos Inventores â€” funÃ§Ãµes auxiliares (strict)
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedTeacher() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidGrade(grade) {
+      return grade in ['1Âº Ano', '2Âº Ano', '3Âº Ano', '4Âº Ano', '5Âº Ano', 'Multisseriada'];
+    }
+
+    function isValidIsland(island) {
+      return island in [
+        'engrenagens', 'historias', 'mapas', 'invencoes', 'comprometimento',
+        'experimentos', 'estrategia', 'artes', 'lideranca'
+      ];
+    }
+
+    function isValidPerformanceLevel(level) {
+      return level in [
+        'Em Andamento',
+        'Indicativo Alto de AH/SD',
+        'Potencial em Destaque',
+        'Desenvolvimento Esperado',
+        'Acompanhamento Sugerido'
+      ];
+    }
+
+    function isValidExplorerTitle(title) {
+      return title in [
+        'Aprendiz do Porto',
+        'Navegador Curioso',
+        'GuardiÃ£o das Ilhas',
+        'CartÃ³grafo Destemido',
+        'Mestre Inventor',
+        'GuardiÃ£o do Foco',
+        'Cientista Curioso',
+        'Estrategista Brilhante',
+        'Maestro Criativo',
+        'Lenda do ArquipÃ©lago'
+      ];
+    }
+
+    function isValidAvatar(a) {
+      return a is map
+        && a.keys().hasAll([
+          'skin', 'hairStyle', 'hairColor', 'outfit', 'outfitColor',
+          'accessory', 'pet', 'bgColor', 'customized'
+        ])
+        && a.keys().hasOnly([
+          'skin', 'hairStyle', 'hairColor', 'outfit', 'outfitColor',
+          'accessory', 'pet', 'bgColor', 'customized'
+        ])
+        && a.skin in ['s1', 's2', 's3', 's4', 's5', 's6']
+        && a.hairStyle in ['curto', 'cacheado', 'longo', 'trancas', 'moicano', 'coque', 'franja', 'ondulado']
+        && a.hairColor in ['preto', 'castanho', 'loiro', 'ruivo', 'azul', 'roxo']
+        && a.outfit in ['colete', 'jaleco', 'capa', 'macacao', 'estelar']
+        && a.outfitColor in ['azul', 'esmeralda', 'ambar', 'indigo', 'coral', 'ardosia']
+        && a.accessory in [
+          'nenhum', 'chapeu_explorador', 'oculos_redondos', 'lenco_aventureiro',
+          'oculos_engrenagem', 'chapeu_farol', 'boina_cartografo', 'coroa_inventor', 'medalhao_foco',
+          'viseira_cientista', 'elmo_estrategista', 'fones_musicais', 'estrela_capitao'
+        ]
+        && a.pet in [
+          'nenhum', 'mini_robo', 'coruja_mensageira', 'tartaruga_bussola', 'dragao_papel', 'castor_construtor',
+          'camaleao_lab', 'raposa_xadrez', 'papagaio_maestro', 'fenix_dourada'
+        ]
+        && a.bgColor in ['ceu', 'menta', 'sol', 'lavanda', 'pessego', 'oceano']
+        && a.customized is bool;
+    }
+
+    function isValidScoresMap(s) {
+      return s is map
+        && s.keys().hasAll(['logic', 'verbal', 'spatial', 'creativity', 'commitment', 'overall'])
+        && s.keys().hasOnly([
+          'logic', 'verbal', 'spatial', 'creativity', 'commitment', 'overall',
+          'science', 'strategy', 'arts', 'leadership'
+        ])
+        && s.logic is number && s.logic >= 0 && s.logic <= 100
+        && s.verbal is number && s.verbal >= 0 && s.verbal <= 100
+        && s.spatial is number && s.spatial >= 0 && s.spatial <= 100
+        && s.creativity is number && s.creativity >= 0 && s.creativity <= 100
+        && s.commitment is number && s.commitment >= 0 && s.commitment <= 100
+        && s.overall is number && s.overall >= 0 && s.overall <= 100
+        && (!('science' in s) || (s.science is number && s.science >= 0 && s.science <= 100))
+        && (!('strategy' in s) || (s.strategy is number && s.strategy >= 0 && s.strategy <= 100))
+        && (!('arts' in s) || (s.arts is number && s.arts >= 0 && s.arts <= 100))
+        && (!('leadership' in s) || (s.leadership is number && s.leadership >= 0 && s.leadership <= 100));
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidSchool(data) {
+      return data.keys().hasAll(['teacherUid', 'name', 'city', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherUid', 'name', 'city', 'driveFolderId', 'createdAt', 'updatedAt'])
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.city is string && data.city.size() <= 80
+        && (!('driveFolderId' in data) || (data.driveFolderId is string && data.driveFolderId.size() <= 128))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRosterList(list) {
+      return list is list
+        && list.size() <= 80
+        && (list.size() == 0 || (list[0] is string && list[0].size() >= 2 && list[0].size() <= 100));
+    }
+
+    function isValidClassroom(data) {
+      return data.keys().hasAll([
+          'teacherUid', 'schoolId', 'schoolName', 'name', 'grade',
+          'accessCode', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid', 'schoolId', 'schoolName', 'name', 'grade',
+          'accessCode', 'active', 'dueDate', 'rosterStudents', 'createdAt', 'updatedAt'
+        ])
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && isValidId(data.schoolId)
+        && data.schoolName is string && data.schoolName.size() >= 2 && data.schoolName.size() <= 120
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && isValidGrade(data.grade)
+        && isValidCode(data.accessCode)
+        && data.active is bool
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 32))
+        && (!('rosterStudents' in data) || isValidRosterList(data.rosterStudents))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidClassCode(data) {
+      return data.keys().hasAll([
+          'teacherUid', 'classId', 'schoolId', 'schoolName',
+          'className', 'grade', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid', 'classId', 'schoolId', 'schoolName',
+          'className', 'grade', 'active', 'rosterStudents',
+          'syncRequestedAt', 'syncTargetSessionId', 'createdAt', 'updatedAt'
+        ])
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && isValidId(data.classId)
+        && isValidId(data.schoolId)
+        && data.schoolName is string && data.schoolName.size() >= 2 && data.schoolName.size() <= 120
+        && data.className is string && data.className.size() >= 2 && data.className.size() <= 80
+        && isValidGrade(data.grade)
+        && data.active is bool
+        && (!('rosterStudents' in data) || isValidRosterList(data.rosterStudents))
+        && (!('syncRequestedAt' in data) || (data.syncRequestedAt is string && data.syncRequestedAt.size() <= 64))
+        && (!('syncTargetSessionId' in data) || (data.syncTargetSessionId is string && data.syncTargetSessionId.size() <= 128))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExplorerEntry(data) {
+      return data.keys().hasAll([
+          'sessionId', 'teacherUid', 'classId', 'classCode', 'displayName',
+          'avatar', 'stars', 'completedMissions', 'completedIslands',
+          'unlockedBadges', 'explorerTitle', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'sessionId', 'teacherUid', 'classId', 'classCode', 'displayName', 'rosterName',
+          'avatar', 'stars', 'completedMissions', 'completedIslands',
+          'unlockedBadges', 'explorerTitle', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.sessionId)
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && isValidId(data.classId)
+        && isValidCode(data.classCode)
+        && data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 40
+        && (!('rosterName' in data) || (data.rosterName is string && data.rosterName.size() >= 2 && data.rosterName.size() <= 100))
+        && isValidAvatar(data.avatar)
+        && data.stars is number && data.stars >= 0 && data.stars <= 750
+        && data.completedMissions is number && data.completedMissions >= 0 && data.completedMissions <= 36
+        && data.completedIslands is number && data.completedIslands >= 0 && data.completedIslands <= 9
+        && data.unlockedBadges is list && data.unlockedBadges.size() <= 16
+        && (data.unlockedBadges.size() == 0 || data.unlockedBadges[0] is string)
+        && isValidExplorerTitle(data.explorerTitle)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll([
+          'teacherUid', 'schoolId', 'schoolName', 'classId', 'className', 'classCode',
+          'sessionToken', 'studentName', 'age', 'grade', 'status', 'currentStep',
+          'currentIsland', 'monthKey', 'elapsedSeconds', 'responses', 'scores',
+          'performanceLevel', 'aiSummary', 'aiRecommendations', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid', 'schoolId', 'schoolName', 'classId', 'className', 'classCode',
+          'sessionToken', 'studentName', 'age', 'grade', 'status', 'currentStep',
+          'currentIsland', 'monthKey', 'elapsedSeconds', 'responses', 'scores',
+          'performanceLevel', 'aiSummary', 'aiRecommendations', 'avatar', 'driveExportedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && isValidId(data.schoolId)
+        && data.schoolName is string && data.schoolName.size() >= 2 && data.schoolName.size() <= 120
+        && isValidId(data.classId)
+        && data.className is string && data.className.size() >= 2 && data.className.size() <= 80
+        && isValidCode(data.classCode)
+        && data.sessionToken is string && data.sessionToken.size() >= 12 && data.sessionToken.size() <= 128
+        && data.studentName is string && data.studentName.size() >= 2 && data.studentName.size() <= 100
+        && data.age is number && data.age >= 6 && data.age <= 14
+        && isValidGrade(data.grade)
+        && data.status in ['em_andamento', 'concluida']
+        && data.currentStep is number && data.currentStep >= 0 && data.currentStep <= 36
+        && isValidIsland(data.currentIsland)
+        && data.monthKey is string && data.monthKey.size() == 7 && data.monthKey.matches('^20[0-9]{2}-[0-1][0-9]$')
+        && data.elapsedSeconds is number && data.elapsedSeconds >= 0 && data.elapsedSeconds <= 28800
+        && data.responses is list && data.responses.size() <= 36
+        && (data.responses.size() == 0 || data.responses[0] is map)
+        && isValidScoresMap(data.scores)
+        && isValidPerformanceLevel(data.performanceLevel)
+        && data.aiSummary is string && data.aiSummary.size() <= 4000
+        && data.aiRecommendations is list && data.aiRecommendations.size() <= 8
+        && (data.aiRecommendations.size() == 0 || data.aiRecommendations[0] is string)
+        && (!('avatar' in data) || isValidAvatar(data.avatar))
+        && (!('driveExportedAt' in data) || (data.driveExportedAt is string && data.driveExportedAt.size() <= 64))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReminder(data) {
+      return data.keys().hasAll([
+          'teacherUid', 'title', 'notes', 'dueDate', 'classId',
+          'className', 'priority', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid', 'title', 'notes', 'dueDate', 'classId',
+          'className', 'priority', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 140
+        && data.notes is string && data.notes.size() <= 500
+        && data.dueDate is string && data.dueDate.size() >= 1 && data.dueDate.size() <= 40
+        && data.classId is string && data.classId.size() <= 128
+        && data.className is string && data.className.size() <= 80
+        && data.priority in ['alta', 'media', 'baixa']
+        && data.completed is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection: schools ---
     match /schools/{schoolId} {
-      allow read, write: if request.auth != null;
+      allow get: if isVerifiedTeacher() && isValidId(schoolId) && existing().teacherUid == request.auth.uid;
+      allow list: if isVerifiedTeacher() && existing().teacherUid == request.auth.uid;
+      allow create: if isVerifiedTeacher()
+        && isValidId(schoolId)
+        && isValidSchool(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedTeacher()
+        && isValidId(schoolId)
+        && isValidSchool(incoming())
+        && existing().teacherUid == request.auth.uid
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'city', 'driveFolderId', 'updatedAt'])
+        );
+      allow delete: if isVerifiedTeacher() && isValidId(schoolId) && existing().teacherUid == request.auth.uid;
     }
 
+    // --- Collection: classes ---
     match /classes/{classId} {
-      allow read, write: if request.auth != null;
+      allow get: if isVerifiedTeacher() && isValidId(classId) && existing().teacherUid == request.auth.uid;
+      allow list: if isVerifiedTeacher() && existing().teacherUid == request.auth.uid;
+      allow create: if isVerifiedTeacher()
+        && isValidId(classId)
+        && isValidClassroom(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/schools/$(incoming().schoolId))
+        && get(/databases/$(database)/documents/schools/$(incoming().schoolId)).data.teacherUid == request.auth.uid;
+      allow update: if isVerifiedTeacher()
+        && isValidId(classId)
+        && isValidClassroom(incoming())
+        && existing().teacherUid == request.auth.uid
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().schoolId == existing().schoolId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'grade', 'active', 'dueDate', 'rosterStudents', 'updatedAt'])
+        );
+      allow delete: if isVerifiedTeacher() && isValidId(classId) && existing().teacherUid == request.auth.uid;
     }
 
-    match /reminders/{reminderId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /sessions/{sessionId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Tablets ingressam via código de 6 caracteres (sem login prévio)
+    // --- Collection: classCodes ---
     match /classCodes/{code} {
-      allow read, write: if true;
+      allow get: if isValidCode(code);
+      allow list: if false;
+      allow create: if isVerifiedTeacher()
+        && isValidCode(code)
+        && isValidClassCode(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/schools/$(incoming().schoolId))
+        && get(/databases/$(database)/documents/schools/$(incoming().schoolId)).data.teacherUid == request.auth.uid;
+      allow update: if isVerifiedTeacher()
+        && isValidCode(code)
+        && isValidClassCode(incoming())
+        && existing().teacherUid == request.auth.uid
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().classId == existing().classId
+        && incoming().schoolId == existing().schoolId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'className', 'grade', 'active', 'rosterStudents',
+            'syncRequestedAt', 'syncTargetSessionId', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedTeacher() && isValidCode(code) && existing().teacherUid == request.auth.uid;
 
+      // --- Subcollection: classCodes/{code}/explorers (Isolated Class Leaderboard) ---
       match /explorers/{sessionId} {
-        allow read, write: if true;
+        allow get: if isValidCode(code) && isValidId(sessionId) && existing().classCode == code;
+        allow list: if isValidCode(code) && existing().classCode == code;
+        allow create: if isValidCode(code)
+          && isValidId(sessionId)
+          && isValidExplorerEntry(incoming())
+          && incoming().sessionId == sessionId
+          && incoming().classCode == code
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/classCodes/$(code))
+          && get(/databases/$(database)/documents/classCodes/$(code)).data.active == true
+          && get(/databases/$(database)/documents/classCodes/$(code)).data.teacherUid == incoming().teacherUid
+          && get(/databases/$(database)/documents/classCodes/$(code)).data.classId == incoming().classId;
+        allow update: if isValidCode(code)
+          && isValidId(sessionId)
+          && isValidExplorerEntry(incoming())
+          && incoming().sessionId == existing().sessionId
+          && incoming().teacherUid == existing().teacherUid
+          && incoming().classId == existing().classId
+          && incoming().classCode == existing().classCode
+          && incoming().displayName == existing().displayName
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().completedMissions >= existing().completedMissions
+          && incoming().completedIslands >= existing().completedIslands
+          && incoming().stars >= existing().stars
+          && (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'avatar', 'stars', 'completedMissions', 'completedIslands',
+              'unlockedBadges', 'explorerTitle', 'updatedAt'
+            ])
+          )
+          && exists(/databases/$(database)/documents/classCodes/$(code))
+          && get(/databases/$(database)/documents/classCodes/$(code)).data.active == true;
+        allow delete: if isVerifiedTeacher()
+          && isValidCode(code)
+          && isValidId(sessionId)
+          && existing().teacherUid == request.auth.uid;
       }
     }
 
-    // 6. Professores autorizados na Ilha dos Inventores (id do documento = e-mail em minúsculas)
-    match /ilhaTeachers/{email} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.resource.data.email is string
-        && request.resource.data.name is string
-        && request.resource.data.schools is list
-        && request.resource.data.id == email;
-      allow delete: if request.auth != null;
+    // --- Collection: sessions ---
+    match /sessions/{sessionId} {
+      allow get: if isVerifiedTeacher() && isValidId(sessionId) && existing().teacherUid == request.auth.uid;
+      allow list: if isVerifiedTeacher() && existing().teacherUid == request.auth.uid;
+      allow create: if isValidId(sessionId)
+        && isValidSession(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/classCodes/$(incoming().classCode))
+        && get(/databases/$(database)/documents/classCodes/$(incoming().classCode)).data.active == true
+        && get(/databases/$(database)/documents/classCodes/$(incoming().classCode)).data.teacherUid == incoming().teacherUid
+        && get(/databases/$(database)/documents/classCodes/$(incoming().classCode)).data.schoolId == incoming().schoolId
+        && get(/databases/$(database)/documents/classCodes/$(incoming().classCode)).data.classId == incoming().classId;
+      allow update: if isValidId(sessionId)
+        && isValidSession(incoming())
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().schoolId == existing().schoolId
+        && incoming().classId == existing().classId
+        && incoming().classCode == existing().classCode
+        && incoming().sessionToken == existing().sessionToken
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            existing().status == 'em_andamento'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'currentStep', 'currentIsland', 'elapsedSeconds',
+              'responses', 'scores', 'performanceLevel', 'aiSummary',
+              'aiRecommendations', 'avatar', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            existing().status == 'concluida'
+            && existing().currentStep >= 16
+            && incoming().status == 'concluida'
+            && incoming().currentStep >= existing().currentStep
+            && incoming().currentStep <= 36
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'currentStep', 'currentIsland', 'elapsedSeconds',
+              'responses', 'scores', 'performanceLevel', 'aiSummary',
+              'aiRecommendations', 'avatar', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['avatar', 'updatedAt'])
+          )
+          ||
+          (
+            isVerifiedTeacher()
+            && existing().teacherUid == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'currentStep', 'currentIsland', 'scores', 'performanceLevel',
+              'aiSummary', 'aiRecommendations', 'driveExportedAt', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedTeacher() && isValidId(sessionId) && existing().teacherUid == request.auth.uid;
+    }
+
+    // --- Collection: reminders ---
+    match /reminders/{reminderId} {
+      allow get: if isVerifiedTeacher() && isValidId(reminderId) && existing().teacherUid == request.auth.uid;
+      allow list: if isVerifiedTeacher() && existing().teacherUid == request.auth.uid;
+      allow create: if isVerifiedTeacher()
+        && isValidId(reminderId)
+        && isValidReminder(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedTeacher()
+        && isValidId(reminderId)
+        && isValidReminder(incoming())
+        && existing().teacherUid == request.auth.uid
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'notes', 'dueDate', 'classId', 'className', 'priority', 'completed', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedTeacher() && isValidId(reminderId) && existing().teacherUid == request.auth.uid;
     }
   }
 }
