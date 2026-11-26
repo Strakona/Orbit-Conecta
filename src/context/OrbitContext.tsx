@@ -60,6 +60,9 @@ const DEMO_STORAGE_KEY = 'orbit_conecta_demo_v1';
 
 const getStorageKey = (): string => (isDemoMode() ? DEMO_STORAGE_KEY : PROD_STORAGE_KEY);
 
+const DEFAULT_TRIAGEM_URL =
+  (import.meta.env.VITE_TRIAGEM_AHSD_URL as string | undefined)?.trim() || '';
+
 const createInitialState = (demo = isDemoMode()): OrbitState => ({
   session: null,
   turmas: INITIAL_TURMAS,
@@ -69,6 +72,7 @@ const createInitialState = (demo = isDemoMode()): OrbitState => ({
   portalSubmissions: demo ? INITIAL_PORTAL_SUBMISSIONS : [],
   auditLogs: demo ? INITIAL_AUDIT_LOGS : [],
   geminiApiKey: '',
+  triagemAhsdUrl: DEFAULT_TRIAGEM_URL,
   highContrast: false,
   viewMode: 'MAP',
   activeDemandId: null,
@@ -209,6 +213,7 @@ interface OrbitContextValue {
     requiredStages: StageKey[];
   }) => void;
   setGeminiApiKey: (key: string) => void;
+  setTriagemAhsdUrl: (url: string) => void;
   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
   submitPortalDemand: (input: PortalAnalysisInput, analysis: DemandAiAnalysis) => PortalSubmission;
   updatePortalSubmissionAnalysis: (submissionId: string, analysis: DemandAiAnalysis) => void;
@@ -1075,6 +1080,18 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   };
 
+  const setTriagemAhsdUrl = (rawUrl: string) => {
+    const trimmed = rawUrl.trim();
+    const normalized =
+      trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
+    setState((prev) => ({ ...prev, triagemAhsdUrl: normalized }));
+    pushToast(
+      normalized ? 'Link da Ilha dos Inventores salvo!' : 'Link da Triagem AH/SD removido',
+      normalized || undefined,
+      'success'
+    );
+  };
+
   const addAuditLog = (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
     const newEntry: AuditLogEntry = {
       ...entry,
@@ -1578,6 +1595,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deliverDemandOfficially,
         createDemand,
         setGeminiApiKey,
+        setTriagemAhsdUrl,
         addAuditLog,
         submitPortalDemand,
         updatePortalSubmissionAnalysis,

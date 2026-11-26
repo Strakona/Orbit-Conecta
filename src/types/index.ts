@@ -305,6 +305,7 @@ export interface OrbitState {
   portalSubmissions: PortalSubmission[];
   auditLogs: AuditLogEntry[];
   geminiApiKey: string;
+  triagemAhsdUrl?: string;
   highContrast: boolean;
   viewMode: 'MAP' | 'CARDS';
   activeDemandId: string | null;

@@ -3,6 +3,7 @@ import {
   Award,
   Check,
   CheckCircle2,
+  Compass,
   Copy,
   ExternalLink,
   Eye,
@@ -111,20 +112,36 @@ export const ProfessorPanel: React.FC = () => {
           </div>
         </div>
 
-        <select
-          id="professor-turma-select"
-          name="turmaId"
-          aria-label="Selecionar turma"
-          value={selectedTurmaId}
-          onChange={(e) => setSelectedTurmaId(e.target.value)}
-          className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800"
-        >
-          {state.turmas.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} · {t.schedule}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {state.triagemAhsdUrl && (
+            <a
+              href={state.triagemAhsdUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-xs font-bold flex items-center gap-1.5"
+              title="Abrir plataforma de Triagem AH/SD (Ilha dos Inventores)"
+            >
+              <Compass className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Triagem AH/SD (Ilha dos Inventores)</span>
+              <ExternalLink className="w-3 h-3 text-indigo-500" />
+            </a>
+          )}
+
+          <select
+            id="professor-turma-select"
+            name="turmaId"
+            aria-label="Selecionar turma"
+            value={selectedTurmaId}
+            onChange={(e) => setSelectedTurmaId(e.target.value)}
+            className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800"
+          >
+            {state.turmas.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} · {t.schedule}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Demandas Aprovadas pela Coordenação aguardando o Professor liberar para as Turmas */}

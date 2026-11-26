@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   ClipboardCheck,
+  Compass,
+  ExternalLink,
   Eye,
   EyeOff,
   FileSearch,
@@ -31,6 +33,7 @@ export const CoordinatorPanel: React.FC = () => {
     syncStatus,
     createDemand,
     setGeminiApiKey,
+    setTriagemAhsdUrl,
     createStaffMember,
     deleteStaffMember,
     purgeProductionDemoData,
@@ -56,13 +59,18 @@ export const CoordinatorPanel: React.FC = () => {
   const [description, setDescription] = useState('');
   const [requiredStages, setRequiredStages] = useState<StageKey[]>([...ALL_STAGES]);
 
-  // BYOK state
+  // BYOK state & Triagem URL state
   const [apiKeyDraft, setApiKeyDraft] = useState(state.geminiApiKey);
   const [showKey, setShowKey] = useState(false);
+  const [triagemUrlDraft, setTriagemUrlDraft] = useState(state.triagemAhsdUrl ?? '');
 
   useEffect(() => {
     setApiKeyDraft(state.geminiApiKey);
   }, [state.geminiApiKey]);
+
+  useEffect(() => {
+    setTriagemUrlDraft(state.triagemAhsdUrl ?? '');
+  }, [state.triagemAhsdUrl]);
 
   // Audit filter
   const [auditFilter, setAuditFilter] = useState('');
@@ -555,6 +563,59 @@ export const CoordinatorPanel: React.FC = () => {
                 <span>Imprimir Crachás (A4)</span>
               </button>
             </div>
+          </div>
+
+          {/* Etapa 1: Ilha dos Inventores — Triagem AH/SD */}
+          <div className="bg-gradient-to-br from-indigo-50 via-white to-sky-50 rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
+                <Compass className="w-4 h-4 text-indigo-600" />
+                <span>Etapa 1: Triagem AH/SD — Ilha dos Inventores</span>
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                Renzulli &amp; Torrance · 9 Ilhas
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Conecte o link da plataforma gamificada de triagem nas escolas (36 missões offline-first)
+              para encaminhar os estudantes identificados diretamente às Turmas AH/SD.
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setTriagemAhsdUrl(triagemUrlDraft);
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={triagemUrlDraft}
+                onChange={(e) => setTriagemUrlDraft(e.target.value)}
+                placeholder="https://ilha-dos-inventores.vercel.app"
+                aria-label="URL da plataforma Ilha dos Inventores (Triagem AH/SD)"
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono"
+              />
+              <button
+                type="submit"
+                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer"
+              >
+                Salvar
+              </button>
+            </form>
+
+            {state.triagemAhsdUrl && (
+              <a
+                href={state.triagemAhsdUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-sky-300" />
+                <span>Abrir Ilha dos Inventores (Triagem AH/SD)</span>
+              </a>
+            )}
           </div>
         </div>
       </div>
