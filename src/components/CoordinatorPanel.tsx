@@ -23,6 +23,7 @@ import { Demand, PortalSubmission, StageKey } from '../types';
 import { isDemoMode } from '../utils/demoMode';
 import { ApprovalNotifyModal } from './ApprovalNotifyModal';
 import { BadgePrintModal } from './BadgePrintModal';
+import { SchoolTeachersManager } from './SchoolTeachersManager';
 import { StudentBadgeManager } from './StudentBadgeManager';
 
 const ALL_STAGES: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
@@ -752,6 +753,9 @@ export const CoordinatorPanel: React.FC = () => {
             )}
           </p>
         </div>
+
+        {/* Professores de escola (Ilha dos Inventores) */}
+        <SchoolTeachersManager className="lg:col-span-12" />
       </div>
 
       {/* Audit Log of AI Conversations */}

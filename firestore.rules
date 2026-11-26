@@ -71,5 +71,16 @@ service cloud.firestore {
         allow read, write: if true;
       }
     }
+
+    // 6. Professores autorizados na Ilha dos Inventores (id do documento = e-mail em minúsculas)
+    match /ilhaTeachers/{email} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.email is string
+        && request.resource.data.name is string
+        && request.resource.data.schools is list
+        && request.resource.data.id == email;
+      allow delete: if request.auth != null;
+    }
   }
 }
