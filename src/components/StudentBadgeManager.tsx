@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
 import { fetchIlhaSessions, IlhaSessionSummary } from '../services/ilhaSessions';
+import { useStaffIdentity } from '../services/staffAccess';
+import { isDemoMode } from '../utils/demoMode';
 import { PixelAvatar } from './PixelAvatar';
 
 interface StudentBadgeManagerProps {
@@ -58,6 +60,10 @@ export const StudentBadgeManager: React.FC<StudentBadgeManagerProps> = ({
     regenerateStudentPin,
     deleteStudent,
   } = useOrbit();
+  const demo = isDemoMode();
+  const { identity, checking: checkingGoogle, signIn: signInGoogle } = useStaffIdentity();
+  const [ilhaAuthLoading, setIlhaAuthLoading] = useState(false);
+  const [ilhaAuthError, setIlhaAuthError] = useState<string | null>(null);
 
   const [mode, setMode] = useState<'SINGLE' | 'BULK' | 'ILHA'>('SINGLE');
   const [newStuName, setNewStuName] = useState('');
@@ -114,10 +120,10 @@ export const StudentBadgeManager: React.FC<StudentBadgeManagerProps> = ({
   }, []);
 
   useEffect(() => {
-    if (mode === 'ILHA' && !ilhaLoaded && !ilhaLoading) {
+    if (mode === 'ILHA' && (demo || identity?.isCoordinator) && !ilhaLoaded && !ilhaLoading) {
       loadIlhaSessions();
     }
-  }, [mode, ilhaLoaded, ilhaLoading, loadIlhaSessions]);
+  }, [mode, demo, identity?.isCoordinator, ilhaLoaded, ilhaLoading, loadIlhaSessions]);
 
   const importedByStudentName = useMemo(() => {
     const map = new Map<string, string>();
@@ -460,6 +466,40 @@ export const StudentBadgeManager: React.FC<StudentBadgeManagerProps> = ({
             </button>
           </div>
         </form>
+      ) : !demo && checkingGoogle ? (
+        <div className="p-4 rounded-2xl bg-violet-50/60 border border-violet-200 text-xs text-slate-600 text-center">
+          Verificando autenticação Google autorizada...
+        </div>
+      ) : !demo && !identity?.isCoordinator ? (
+        <div className="p-4 rounded-2xl bg-violet-50/70 border border-violet-200 space-y-3">
+          <div className="flex items-start gap-2.5 text-xs text-violet-950">
+            <ShieldCheck className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+            <div>
+              <strong>Acesso protegido (LGPD / ECA):</strong> para listar os estudantes avaliados na
+              Ilha dos Inventores e importar para as turmas, entre com sua conta Google autorizada
+              como Coordenador SMED ou Administrador.
+            </div>
+          </div>
+          {ilhaAuthError && (
+            <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+              {ilhaAuthError}
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={ilhaAuthLoading}
+            onClick={async () => {
+              setIlhaAuthError(null);
+              setIlhaAuthLoading(true);
+              const res = await signInGoogle();
+              if (!res.ok && res.message) setIlhaAuthError(res.message);
+              setIlhaAuthLoading(false);
+            }}
+            className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+          >
+            {ilhaAuthLoading ? 'Conectando...' : 'Entrar com Google (Admin / Coordenação)'}
+          </button>
+        </div>
       ) : (
         <div className="p-3.5 rounded-2xl bg-violet-50/60 border border-violet-200 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">

@@ -6,10 +6,12 @@ import {
   ListPlus,
   Mail,
   MessageCircle,
+  ShieldCheck,
   Trash2,
   UserPlus,
 } from 'lucide-react';
 import { useOrbit } from '../context/OrbitContext';
+import { useStaffIdentity } from '../services/staffAccess';
 import {
   buildInviteMessage,
   buildMailtoUrl,
@@ -62,6 +64,7 @@ function parseBulk(text: string): { rows: BulkRow[]; invalid: string[] } {
 export const SchoolTeachersManager: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { state, pushToast } = useOrbit();
   const demo = isDemoMode();
+  const { identity, checking, signIn } = useStaffIdentity();
   const ilhaUrl = state.triagemAhsdUrl?.trim() ?? '';
 
   const [teachers, setTeachers] = useState<IlhaTeacher[]>([]);
@@ -73,12 +76,15 @@ export const SchoolTeachersManager: React.FC<{ className?: string }> = ({ classN
   const [schoolsText, setSchoolsText] = useState('');
   const [bulkText, setBulkText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!demo && !identity?.isCoordinator) return;
     const unsub = subscribeIlhaTeachers(setTeachers);
     void fetchIlhaSchoolNames().then(setSchoolOptions);
     return unsub;
-  }, []);
+  }, [demo, identity?.isCoordinator]);
 
   const bulkPreview = useMemo(() => parseBulk(bulkText), [bulkText]);
   const existingEmails = useMemo(() => new Set(teachers.map((t) => t.id)), [teachers]);
@@ -207,7 +213,43 @@ export const SchoolTeachersManager: React.FC<{ className?: string }> = ({ classN
         </p>
       </div>
 
-      {!ilhaUrl && (
+      {!demo && checking ? (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
+          Verificando conta Google autorizada...
+        </div>
+      ) : !demo && !identity?.isCoordinator ? (
+        <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+          <div className="flex items-start gap-2.5 text-xs text-indigo-950">
+            <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+            <div>
+              <strong>Autenticação Google necessária:</strong> para proteger a lista de professores
+              autorizados na Ilha dos Inventores, entre com uma conta Google cadastrada pelo
+              Administrador como Coordenador SMED.
+            </div>
+          </div>
+          {googleError && (
+            <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+              {googleError}
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={googleLoading}
+            onClick={async () => {
+              setGoogleError(null);
+              setGoogleLoading(true);
+              const res = await signIn();
+              if (!res.ok && res.message) setGoogleError(res.message);
+              setGoogleLoading(false);
+            }}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+          >
+            {googleLoading ? 'Conectando...' : 'Entrar com Google (Admin / Coordenação)'}
+          </button>
+        </div>
+      ) : (
+        <>
+          {!ilhaUrl && (
         <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
           Configure o endereço da Ilha dos Inventores no cartão de configuração da Coordenação para
           que o link entre nas mensagens.
@@ -416,6 +458,8 @@ export const SchoolTeachersManager: React.FC<{ className?: string }> = ({ classN
           ))
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

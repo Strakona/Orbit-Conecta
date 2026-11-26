@@ -10,7 +10,7 @@ import {
 } from '../data/seedData';
 import { INITIAL_PORTAL_SUBMISSIONS } from '../data/portalSeedData';
 import { PROJECT_THEME_ACCENTS } from '../habblaud/client/src/art/theme';
-import { ensureFirebaseAuthSession, isFirebaseConfigured } from '../lib/firebase';
+import { ensureFirebaseAuthSession, isFirebaseConfigured, signOutFirebase } from '../lib/firebase';
 import {
   buildOrbitDemandFromSubmission,
   PortalAnalysisInput,
@@ -181,7 +181,7 @@ interface OrbitContextValue {
   loginAsStudent: (studentId: string, pin: string) => boolean;
   loginAsStudentByBadge: (badgeCode: string, pin: string) => Promise<boolean>;
   loginAsStaffWithCode: (role: Exclude<Role, 'ALUNO'>, passcode: string) => Promise<boolean>;
-  loginAsRole: (role: Exclude<Role, 'ALUNO'>) => void;
+  loginAsRole: (role: Exclude<Role, 'ALUNO'>, customName?: string) => void;
   switchDemoRole: (role: Role) => void;
   logout: () => void;
   setViewMode: (mode: 'MAP' | 'CARDS') => void;
@@ -473,6 +473,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const logout = () => {
+    void signOutFirebase();
     setState((prev) => ({
       ...prev,
       session: null,

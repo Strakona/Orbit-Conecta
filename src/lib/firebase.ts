@@ -1,5 +1,13 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, signInAnonymously } from 'firebase/auth';
+import {
+  Auth,
+  getAuth,
+  GoogleAuthProvider,
+  signInAnonymously,
+  signInWithPopup,
+  signOut,
+  User,
+} from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 
 const apiKey = (import.meta.env.VITE_FIREBASE_API_KEY as string | undefined)?.trim() ?? '';
@@ -11,16 +19,16 @@ const firebaseConfig = {
   apiKey,
   authDomain:
     (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined)?.trim() ||
-    'sistema-laboratorio-inovacao.firebaseapp.com',
+    'orbit-conecta-smed.firebaseapp.com',
   projectId:
     (import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined)?.trim() ||
-    'sistema-laboratorio-inovacao',
+    'orbit-conecta-smed',
   storageBucket:
     (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined)?.trim() ||
-    'sistema-laboratorio-inovacao.firebasestorage.app',
+    'orbit-conecta-smed.firebasestorage.app',
   messagingSenderId:
     (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined)?.trim() ||
-    '760661763459',
+    '705964935819',
   appId,
 };
 
@@ -48,5 +56,24 @@ export async function ensureFirebaseAuthSession(): Promise<void> {
     await signInAnonymously(authInstance);
   } catch {
     // Se Anonymous Auth ainda não estiver ativado no Console, não trava a interface
+  }
+}
+
+/** Login Google para Administrador/Coordenador (identidade real, diferente da sessão anônima). */
+export async function googleSignInPopup(): Promise<User | null> {
+  if (!authInstance) return null;
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const result = await signInWithPopup(authInstance, provider);
+  return result.user;
+}
+
+/** Encerra qualquer sessão do Firebase (Google ou anônima) ao sair do sistema. */
+export async function signOutFirebase(): Promise<void> {
+  if (!authInstance) return;
+  try {
+    await signOut(authInstance);
+  } catch {
+    // ignore
   }
 }

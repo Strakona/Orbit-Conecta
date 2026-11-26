@@ -21,10 +21,12 @@ import { useOrbit } from '../context/OrbitContext';
 import { STAGE_META, TUTOR_PERSONAS } from '../data/seedData';
 import { Demand, PortalSubmission, StageKey } from '../types';
 import { isDemoMode } from '../utils/demoMode';
+import { AdminCoordinatorsManager } from './AdminCoordinatorsManager';
 import { ApprovalNotifyModal } from './ApprovalNotifyModal';
 import { BadgePrintModal } from './BadgePrintModal';
 import { SchoolTeachersManager } from './SchoolTeachersManager';
 import { StudentBadgeManager } from './StudentBadgeManager';
+import { useStaffIdentity } from '../services/staffAccess';
 
 const ALL_STAGES: StageKey[] = ['UI_UX', 'LOGICA_REGRAS', 'IA_DADOS', 'QA_TESTES'];
 
@@ -43,6 +45,7 @@ export const CoordinatorPanel: React.FC = () => {
     openDemandRoom,
   } = useOrbit();
   const demo = isDemoMode();
+  const { identity } = useStaffIdentity();
   const [purgingDemo, setPurgingDemo] = useState(false);
   const [approvalNotifyTarget, setApprovalNotifyTarget] = useState<{
     submission: PortalSubmission;
@@ -192,6 +195,8 @@ export const CoordinatorPanel: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {!demo && identity?.isAdmin && <AdminCoordinatorsManager adminIdentity={identity} />}
 
       {/* Pending Approval Queue (Live from Portal de Demandas) */}
       <div

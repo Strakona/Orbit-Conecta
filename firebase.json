@@ -4,7 +4,17 @@
   },
   "auth": {
     "providers": {
-      "anonymous": true
+      "anonymous": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Orbit Conecta SMED",
+        "supportEmail": "profcaiocianorte@gmail.com",
+        "authorizedRedirectUris": [
+          "https://orbit-conecta-smed.firebaseapp.com/__/auth/handler",
+          "https://orbit-conecta-v2.vercel.app",
+          "https://ilha-dos-inventores.vercel.app",
+          "http://localhost:5173"
+        ]
+      }
     }
   }
 }
