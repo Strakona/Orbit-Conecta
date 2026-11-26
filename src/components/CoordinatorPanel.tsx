@@ -134,7 +134,7 @@ export const CoordinatorPanel: React.FC = () => {
           </div>
           <div>
             <h2 className="font-display font-bold text-xl text-slate-900">
-              Painel da Coordenação — SMED / CEMI 2 Cianorte
+              Painel da Coordenação — SMED Cianorte
             </h2>
             <p className="text-xs text-slate-600">
               Cadastre demandas municipais, configure a chave Gemini BYOK e audite logs socráticos anonimizados.

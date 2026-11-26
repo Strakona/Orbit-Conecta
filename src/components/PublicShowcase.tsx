@@ -62,7 +62,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
   const handleDownloadCard = () => {
     if (publicView || !selectedStudent) return;
     const lines = [
-      'ORBIT CONECTA — SMED CIANORTE (CEMI 2)',
+      'ORBIT CONECTA — SMED CIANORTE (LAB. INOVAÇÃO)',
       'CERTIFICADO DIGITAL: "EU AJUDEI A FAZER"',
       '-------------------------------------------',
       `Estudante: ${selectedStudent.name}`,
@@ -102,7 +102,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
             Soluções Digitais Entregues à Comunidade
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
-            Aplicativos web e assistentes de IA criados colaborativamente pelas Turmas AH/SD do CEMI 2 após Entrega Oficial.
+            Aplicativos web e assistentes de IA criados colaborativamente pelas Turmas AH/SD (SMED Cianorte) após Entrega Oficial.
           </p>
         </div>
 
@@ -120,7 +120,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
             Nenhuma solução entregue oficialmente ainda
           </h3>
           <p className="text-xs text-slate-600 max-w-md mx-auto">
-            Assim que as Turmas AH/SD do CEMI 2 concluírem uma demanda e o Professor Mentor realizar a
+            Assim que as Turmas AH/SD do Laboratório concluírem uma demanda e o Professor Mentor realizar a
             Entrega Oficial, o aplicativo aparecerá aqui para uso público.
           </p>
         </div>
@@ -158,7 +158,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
                 {isStaff ? (
                   <div className="mt-4 pt-3 border-t border-slate-100">
                     <div className="text-[11px] font-bold text-slate-700 mb-2">
-                      Créditos Internos da Equipe Construtora (Uso CEMI 2):
+                      Créditos Internos da Equipe Construtora (Uso Interno):
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {STAGE_ORDER.map((k) => {
@@ -191,7 +191,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
                   <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                       <Users className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Desenvolvido pelas Turmas AH/SD · CEMI 2 — SMED Cianorte</span>
+                      <span>Desenvolvido pelas Turmas AH/SD · Lab. Inovação — SMED Cianorte</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5">
@@ -237,7 +237,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
             <strong>Proteção de Dados (LGPD / ECA):</strong> nesta vitrine pública não são exibidos
             nomes, fotos, horários ou identificações individuais dos estudantes. Certificados
             individuais ("Eu Ajudei a Fazer") ficam disponíveis apenas dentro do ambiente autenticado
-            do CEMI 2.
+            do Laboratório.
           </span>
         </div>
       ) : !selectedStudent ? (
@@ -310,7 +310,7 @@ export const PublicShowcase: React.FC<PublicShowcaseProps> = ({ isPublicMode = f
                 />
                 <div>
                   <span className="font-pixel text-[10px] text-indigo-700 uppercase">
-                    Eu Ajudei a Fazer · CEMI 2 / SMED Cianorte
+                    Eu Ajudei a Fazer · Lab. Inovação / SMED Cianorte
                   </span>
                   <h4 className="font-display font-extrabold text-xl text-slate-900">
                     {selectedStudent.name}

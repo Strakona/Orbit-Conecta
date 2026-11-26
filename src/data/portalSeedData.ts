@@ -215,9 +215,9 @@ export const INITIAL_PORTAL_SUBMISSIONS: PortalSubmission[] = [
       viabilityStatus: 'FORA_DE_ESCOPO_HARDWARE',
       viabilityScore: 28,
       viabilityRationale:
-        'O pedido original exige hardware físico (catraca, sensor infravermelho, Arduino e impressora térmica), o que foge do escopo 100% digital em software e IA das Turmas AH/SD no CEMI 2.',
+        'O pedido original exige hardware físico (catraca, sensor infravermelho, Arduino e impressora térmica), o que foge do escopo 100% digital em software e IA das Turmas AH/SD no Laboratório.',
       friendlySummary:
-        'Identificamos que catracas, sensores físicos e impressoras térmicas não são construídos no laboratório (foco 100% em software web e IA). Porém, o CEMI 2 pode criar uma versão 100% digital com check-in web por QR Code e triagem inteligente de fila!',
+        'Identificamos que catracas, sensores físicos e impressoras térmicas não são construídos no laboratório (foco 100% em software web e IA). Porém, o Laboratório pode criar uma versão 100% digital com check-in web por QR Code e triagem inteligente de fila!',
       suggestedShortName: 'Fila Digital Obras',
       hardwareAdaptation: {
         suggestedTitle: 'Check-in Web & Painel de Fila Digital da Secretaria de Obras',
@@ -549,7 +549,7 @@ export const INITIAL_PORTAL_SUBMISSIONS: PortalSubmission[] = [
       viabilityScore: 96,
       viabilityRationale: 'Sistema web educativo de pré-acolhimento com regras de alerta 192 e assistente de dúvidas.',
       friendlySummary:
-        'Aprovado e em desenvolvimento ativo pelas Turmas AH/SD do CEMI 2 na sala Triagem UBS!',
+        'Aprovado e em desenvolvimento ativo pelas Turmas AH/SD do Laboratório na sala Triagem UBS!',
       suggestedShortName: 'Triagem UBS',
       stations: {
         UI_UX: {

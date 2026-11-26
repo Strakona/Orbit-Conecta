@@ -123,7 +123,7 @@ export const HabblaudOfficeCanvas: React.FC<HabblaudOfficeCanvasProps> = ({
       {/* Top-Left HUD Badge */}
       <div className="absolute top-3 left-3 z-20 pointer-events-none flex flex-wrap items-center gap-2">
         <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-700 text-white text-xs font-semibold shadow-lg">
-          Motor Habblaud 2.5D · CEMI 2 / SMED Cianorte
+          Motor Habblaud 2.5D · Lab. Inovação / SMED Cianorte
         </span>
         <span className="hidden md:inline-block px-2.5 py-1 rounded-xl bg-slate-950/80 border border-sky-400/50 text-sky-100 text-[11px] font-medium backdrop-blur-md shadow-lg">
           Clique em uma sala ou avatar · Arraste para mover · Roda do mouse para zoom

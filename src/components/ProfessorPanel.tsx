@@ -103,7 +103,7 @@ export const ProfessorPanel: React.FC = () => {
           </div>
           <div>
             <h2 className="font-display font-bold text-xl text-slate-900">
-              Painel do Professor Mentor — CEMI 2
+              Painel do Professor Mentor — Lab. Inovação
             </h2>
             <p className="text-xs text-slate-600">
               Monitoramento síncrono da turma do dia, fila prioritária de Mão Levantada, Modo Teste e Entrega Oficial.
@@ -709,7 +709,7 @@ export const ProfessorPanel: React.FC = () => {
               : '';
             const waText = [
               `Olá${linkedSub ? `, ${linkedSub.requesterName}` : ''}! 🌸`,
-              `A solução digital "${deliveryModalDemand.title}" solicitada para ${deliveryModalDemand.secretaria} foi concluída pelas Turmas AH/SD no Laboratório Orbit Conecta (CEMI 2 / SMED Cianorte)!`,
+              `A solução digital "${deliveryModalDemand.title}" solicitada para ${deliveryModalDemand.secretaria} foi concluída pelas Turmas AH/SD no Laboratório Orbit Conecta (SMED Cianorte)!`,
               '',
               `🔗 Acesse o aplicativo pronto: ${appUrl}`,
               ...(protoUrl ? [`📋 Acompanhe e confirme o recebimento no protocolo ${linkedSub?.protocol}: ${protoUrl}`] : []),

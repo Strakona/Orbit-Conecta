@@ -104,7 +104,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Acesso Restrito · CEMI 2 / SMED</span>
+                <span>Acesso Restrito · SMED Cianorte</span>
               </span>
               {demo && (
                 <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold">
@@ -164,7 +164,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   <GraduationCap className="w-5 h-5 text-slate-950" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm">Professor Mentor (CEMI 2)</div>
+                  <div className="font-semibold text-sm">Professor Mentor (Lab. Inovação)</div>
                   <div className="text-xs text-slate-300">Acesso protegido por código institucional</div>
                 </div>
               </button>
@@ -208,7 +208,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <form onSubmit={handleStudentSubmit} className="space-y-5">
               <div>
                 <h2 className="font-display text-xl font-bold text-slate-900">
-                  Entrar com seu Crachá do CEMI 2
+                  Entrar com seu Crachá do Laboratório
                 </h2>
                 <p className="text-xs text-slate-600 mt-0.5">
                   Digite o código do seu crachá individual e o PIN secreto de 4 dígitos.
@@ -338,7 +338,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </div>
               <div>
                 <h2 className="font-display text-2xl font-bold text-slate-900">
-                  Acesso Professor Mentor — CEMI 2
+                  Acesso Professor Mentor — Lab. Inovação
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
                   Monitore a turma do dia, atenda mãos levantadas, aprove etapas com Badges e

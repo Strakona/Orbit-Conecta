@@ -420,7 +420,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         role,
         name:
           customName ||
-          (role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (CEMI 2)' : 'Coord. Mariana (SMED)'),
+          (role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (Lab. Inovação)' : 'Coord. Mariana (SMED)'),
       },
       activeTab: role === 'PROFESSOR' ? 'PROFESSOR' : 'COORDENADOR',
       activeDemandId: null,
@@ -455,7 +455,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...prev,
       session: {
         role,
-        name: role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (CEMI 2)' : 'Coord. Mariana (SMED)',
+        name: role === 'PROFESSOR' ? 'Prof. Mentor Ricardo (Lab. Inovação)' : 'Coord. Mariana (SMED)',
       },
       activeTab: role === 'PROFESSOR' ? 'PROFESSOR' : 'COORDENADOR',
       activeDemandId: null,
@@ -1129,7 +1129,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     void syncPortalSubmissionToFirestore(newSub);
     pushToast(
       `Demanda enviada! Protocolo ${protocol}`,
-      'A IA analisou sua solicitação e a encaminhou para triagem no CEMI 2.',
+      'A IA analisou sua solicitação e a encaminhou para triagem na SMED.',
       'success'
     );
     return newSub;
@@ -1241,7 +1241,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }));
     void syncPortalSubmissionToFirestore(updated);
     pushToast(
-      'Resposta enviada ao CEMI 2!',
+      'Resposta enviada ao Laboratório!',
       'Seu protocolo retornou para revisão do Mentor.',
       'success'
     );
@@ -1276,7 +1276,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       approvedBy: state.session?.name ?? 'Coordenação SMED',
       approvalNote:
         approvalNote?.trim() ||
-        'Sua demanda foi aprovada pela Coordenação SMED e já entrou em produção com as Turmas AH/SD no CEMI 2!',
+        'Sua demanda foi aprovada pela Coordenação SMED e já entrou em produção com as Turmas AH/SD no Laboratório!',
     };
 
     setState((prev) => {
@@ -1327,7 +1327,7 @@ export const OrbitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     void syncPortalSubmissionToFirestore(updated);
     pushToast(
       '🎉 Recebimento confirmado!',
-      'Seu feedback já está visível para o Professor Mentor no CEMI 2.',
+      'Seu feedback já está visível para o Professor Mentor do Laboratório.',
       'success'
     );
   };

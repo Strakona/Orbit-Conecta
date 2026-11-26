@@ -98,7 +98,7 @@ export const DemandPortal: React.FC<DemandPortalProps> = ({
                     )}
                   </div>
                   <div className="text-[11px] text-slate-300">
-                    Laboratório de Inovação Pedagógica (CEMI 2) — Escolas & Secretarias Municipais
+                    Laboratório de Inovação Pedagógica (SMED Cianorte) — Escolas & Secretarias Municipais
                   </div>
                 </div>
               </div>
@@ -145,7 +145,7 @@ export const DemandPortal: React.FC<DemandPortalProps> = ({
                   className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Acesso CEMI 2</span>
+                  <span>Acesso ao Lab</span>
                 </button>
               )}
             </div>

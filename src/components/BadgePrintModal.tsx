@@ -47,7 +47,7 @@ export const BadgePrintModal: React.FC<BadgePrintModalProps> = ({
             </div>
             <div>
               <h3 className="font-display font-bold text-base">
-                Folha de Crachás CEMI 2 (Recorte A4)
+                Folha de Crachás Orbit Conecta (Recorte A4)
               </h3>
               <p className="text-[11px] text-slate-300">
                 Cada crachá possui QR Code direto (<code>?cracha=ORB-XX</code>) e PIN do aluno.
@@ -125,7 +125,7 @@ export const BadgePrintModal: React.FC<BadgePrintModalProps> = ({
                     <div className="bg-[#0B132B] text-white px-4 py-2 flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide">
                         <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                        <span>ORBIT CONECTA · CEMI 2</span>
+                        <span>ORBIT CONECTA · SMED</span>
                       </div>
                       <span className="text-[10px] font-semibold text-sky-300">
                         SMED Cianorte

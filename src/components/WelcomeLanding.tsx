@@ -105,7 +105,7 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <div className="px-3.5 py-1.5 rounded-full bg-slate-950/75 backdrop-blur-md border border-white/15 text-sky-200 text-xs font-semibold flex items-center gap-2 shadow-lg">
             <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-            <span>SMED Cianorte · CEMI 2</span>
+            <span>SMED Cianorte · Lab. Inovação</span>
           </div>
 
           {demo && (
@@ -159,7 +159,7 @@ export const WelcomeLanding: React.FC<WelcomeLandingProps> = ({
             className="px-4 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-500 text-white border border-sky-300/40 backdrop-blur-md text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer"
           >
             <Lock className="w-3.5 h-3.5" />
-            <span>Acesso CEMI 2</span>
+            <span>Acesso ao Lab</span>
           </button>
         </div>
       </header>

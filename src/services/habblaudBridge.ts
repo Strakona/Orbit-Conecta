@@ -97,7 +97,7 @@ function activityForStage(stageKey?: StageKey): { icon: string; text: string; ki
     case 'QA_TESTES':
       return { icon: '🧪', text: 'Testando fluxo no simulador', kind: 'test' };
     default:
-      return { icon: '☕', text: 'No Lounge / Copa CEMI 2', kind: 'done' };
+      return { icon: '☕', text: 'No Lounge / Copa do Lab', kind: 'done' };
   }
 }
 
@@ -150,7 +150,7 @@ export function buildHabblaudSnapshot(
     rooms.push({
       id: 'sala-demandas',
       name: 'Sala de Demandas',
-      path: 'CEMI 2 / SMED Cianorte',
+      path: 'Lab. Inovação / SMED Cianorte',
       slot: 0,
       seed: hash32('sala-demandas'),
       themeIndex: 0,
@@ -201,9 +201,9 @@ export function buildHabblaudSnapshot(
             id: p.uuid,
             kind: 'main',
             roomId,
-            name: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe CEMI 2',
+            name: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe Lab',
             look: p.look ?? (idx % 2 === 0 ? 'm' : 'f'),
-            role: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe CEMI 2',
+            role: p.activeStage ? STAGE_META[p.activeStage].shortLabel : 'Equipe Lab',
             title: demand ? demand.shortName : 'Lounge',
             sessionId: p.uuid,
             account: p.turmaId,
@@ -268,7 +268,7 @@ export function buildHabblaudSnapshot(
       name: anonymize
         ? stu.activeStage
           ? STAGE_META[stu.activeStage].shortLabel
-          : 'Equipe CEMI 2'
+          : 'Equipe Lab'
         : stu.name,
       look: idx % 2 === 0 ? 'm' : 'f',
       role: stu.activeStage ? STAGE_META[stu.activeStage].shortLabel : 'Estudante AH/SD',

@@ -413,7 +413,7 @@ export const PortalTriagePanel: React.FC<PortalTriagePanelProps> = ({
                         Publicação Direta Bloqueada — Pedido Exige Hardware Físico
                       </div>
                       <p className="text-xs text-rose-900 mt-0.5">
-                        O CEMI 2 trabalha exclusivamente com software web e IA. Aceite a conversão
+                        O Laboratório trabalha exclusivamente com software web e IA. Aceite a conversão
                         digital sugerida pela IA abaixo ou solicite esclarecimento ao órgão.
                       </p>
                     </div>

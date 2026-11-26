@@ -119,7 +119,7 @@ export const AVATAR_PRESETS: AvatarConfig[] = [
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
   {
     id: 'staff-prof-1',
-    name: 'Prof. Mentor CEMI 2',
+    name: 'Prof. Mentor (Lab. Inovação)',
     role: 'PROFESSOR',
     accessCode: 'CEMI2026',
     createdAt: '2026-11-18T08:00:00Z',
@@ -138,25 +138,25 @@ export const INITIAL_TURMAS: Turma[] = [
     id: 'turma-1',
     name: 'Turma AH/SD 1',
     schedule: 'Segunda · 07h30–09h15',
-    description: 'Desenvolvimento Web & Soluções Cívicas — CEMI 2',
+    description: 'Desenvolvimento Web & Soluções Cívicas — SMED',
   },
   {
     id: 'turma-2',
     name: 'Turma AH/SD 2',
     schedule: 'Terça · 13h30–15h15',
-    description: 'IA Aplicada & Produtos Educacionais — CEMI 2',
+    description: 'IA Aplicada & Produtos Educacionais — SMED',
   },
   {
     id: 'turma-3',
     name: 'Turma AH/SD 3',
     schedule: 'Quarta · 09h30–11h15',
-    description: 'Sistemas Digitais & Automação — CEMI 2',
+    description: 'Sistemas Digitais & Automação — SMED',
   },
   {
     id: 'turma-4',
     name: 'Turma AH/SD 4',
     schedule: 'Quinta · 15h30–17h15',
-    description: 'Laboratório Aberto de Prototipação — CEMI 2',
+    description: 'Laboratório Aberto de Prototipação — SMED',
   },
 ];
 
@@ -916,7 +916,7 @@ export const INITIAL_DEMANDS: Demand[] = [
               },
               {
                 id: 'lib-2',
-                title: 'Clube de Leitura CEMI 2',
+                title: 'Clube de Leitura Escolar',
                 description: 'Participe das rodas de leitura toda sexta-feira no contraturno.',
                 icon: 'BookOpen',
               },

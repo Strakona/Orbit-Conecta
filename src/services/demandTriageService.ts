@@ -196,7 +196,7 @@ function buildStarterArtifactsFromSummary(params: {
       title: params.infoTitle || params.organization,
       description:
         params.infoDesc ||
-        'Aplicativo web do Laboratório de Inovação CEMI 2 — SMED Cianorte.',
+        'Aplicativo web do Laboratório de Inovação — SMED Cianorte.',
       icon: 'Sparkles',
     },
   ];
@@ -302,7 +302,7 @@ export function simulateDemandAnalysis(input: PortalAnalysisInput): DemandAiAnal
     return {
       viabilityStatus: 'FORA_DE_ESCOPO_HARDWARE',
       viabilityScore: 30,
-      viabilityRationale: `Detectamos menção a componentes físicos (${matchedHardware.slice(0, 3).join(', ')}). As Turmas AH/SD no CEMI 2 desenvolvem exclusivamente software web e soluções com IA (sem robótica ou hardware físico).`,
+      viabilityRationale: `Detectamos menção a componentes físicos (${matchedHardware.slice(0, 3).join(', ')}). As Turmas AH/SD no Laboratório desenvolvem exclusivamente software web e soluções com IA (sem robótica ou hardware físico).`,
       friendlySummary:
         'Seu pedido envolve equipamentos físicos, que não fazem parte do escopo do laboratório. Mas não se preocupe: já preparamos uma sugestão 100% digital (web + QR Code + IA) que resolve o mesmo problema usando apenas navegadores e celulares!',
       suggestedShortName: shortName,
@@ -384,9 +384,9 @@ export function simulateDemandAnalysis(input: PortalAnalysisInput): DemandAiAnal
     viabilityStatus,
     viabilityScore,
     viabilityRationale: isComplex
-      ? 'Demanda digital viável para prototipação web + IA no CEMI 2, recomendando recorte modular em formulário objetivo, regras Se/Então e assistente Gemini focado.'
+      ? 'Demanda digital viável para prototipação web + IA no Laboratório, recomendando recorte modular em formulário objetivo, regras Se/Então e assistente Gemini focado.'
       : 'Excelente demanda 100% digital: clara, com impacto direto na comunidade de Cianorte e aderente às 4 estações modulares do Orbit Conecta.',
-    friendlySummary: `Recebemos a demanda de ${input.organization}! Nossa equipe do CEMI 2 pode transformá-la em um aplicativo web simples onde ${
+    friendlySummary: `Recebemos a demanda de ${input.organization}! Nossa equipe do Laboratório pode transformá-la em um aplicativo web simples onde ${
       isSchool ? 'professores, alunos ou famílias' : 'cidadãos e servidores'
     } preenchem poucos campos, recebem uma orientação automática imediata e tiram dúvidas com um assistente inteligente.`,
     suggestedShortName: shortName,
@@ -484,7 +484,7 @@ export async function analyzePortalDemand(params: {
   try {
     const ai = new GoogleGenAI({ apiKey: cleanKey });
     const prompt = [
-      'Você é o Motor de Triagem e Decomposição Pedagógica do Laboratório Orbit Conecta (CEMI 2 / SMED Cianorte-PR).',
+      'Você é o Motor de Triagem e Decomposição Pedagógica do Laboratório Orbit Conecta (SMED Cianorte-PR).',
       'Avalie a demanda abaixo enviada por uma escola ou secretaria municipal:',
       `- Solicitante: ${input.requesterName} (${input.requesterRole})`,
       `- Órgão: ${input.organization} (${input.organizationType})`,
@@ -669,7 +669,7 @@ export function applyDigitalAdaptation(submission: PortalSubmission): DemandAiAn
     }`,
     friendlySummary:
       hw?.suggestedDescription ||
-      'Versão 100% digital aprovada para construção nas bancadas web e Gemini do CEMI 2.',
+      'Versão 100% digital aprovada para construção nas bancadas web e Gemini do Laboratório.',
     suggestedShortName: adaptedShort,
     hardwareAdaptation: undefined,
     starterArtifacts: {
@@ -728,5 +728,5 @@ export function buildOrbitDemandFromSubmission(submission: PortalSubmission): De
 }
 
 export function buildClarificationTemplate(submission: PortalSubmission): string {
-  return `Olá, ${submission.requesterName}! Aqui é a equipe do Laboratório de Inovação (CEMI 2 / SMED Cianorte). Recebemos sua demanda "${submission.title}" (Protocolo ${submission.protocol}). Para que nossos estudantes das Turmas AH/SD possam desenhar a melhor solução digital, você poderia esclarecer: quais são os 2 ou 3 campos ou informações principais que quem for usar o sistema precisa preencher primeiro?`;
+  return `Olá, ${submission.requesterName}! Aqui é a equipe do Laboratório de Inovação (SMED Cianorte). Recebemos sua demanda "${submission.title}" (Protocolo ${submission.protocol}). Para que nossos estudantes das Turmas AH/SD possam desenhar a melhor solução digital, você poderia esclarecer: quais são os 2 ou 3 campos ou informações principais que quem for usar o sistema precisa preencher primeiro?`;
 }

@@ -66,7 +66,7 @@ export const Header: React.FC = () => {
                   Orbit Conecta
                 </span>
                 <span className="hidden md:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                  SMED Cianorte · CEMI 2
+                  SMED Cianorte · Lab. Inovação
                 </span>
               </div>
               <p className="text-[11px] text-slate-300 leading-tight">

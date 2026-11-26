@@ -152,7 +152,7 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
                 <strong>
                   {analysis.mode === 'GEMINI_LIVE'
                     ? 'Gemini 2.5 Flash (Ao Vivo)'
-                    : 'Motor Inteligente CEMI 2'}
+                    : 'Motor Inteligente SMED'}
                 </strong>
               </p>
             </div>
@@ -178,7 +178,7 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
         >
           <div className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-sky-600" />
-            <span>Como seu pedido pode virar solução digital no CEMI 2:</span>
+            <span>Como seu pedido pode virar solução digital no Laboratório:</span>
           </div>
           <p className="text-sm leading-relaxed">{analysis.friendlySummary}</p>
 
@@ -278,7 +278,7 @@ export const PortalSubmissionForm: React.FC<PortalSubmissionFormProps> = ({
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-[11px] font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>SMED Cianorte · CEMI 2</span>
+            <span>SMED Cianorte · Lab. Inovação</span>
           </span>
           <h2 className="font-display font-bold text-xl sm:text-2xl text-slate-900">
             Conte qual desafio sua escola ou secretaria quer resolver

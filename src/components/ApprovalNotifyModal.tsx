@@ -33,7 +33,7 @@ export function buildApprovalNotificationText(submission: PortalSubmission): {
 
   const message = [
     `Olá, ${submission.requesterName}! 🚀`,
-    `Sua demanda "${submission.title}" (${submission.organization}) — protocolo ${submission.protocol} — foi APROVADA pela Coordenação SMED e já vai ser produzida pelas Turmas AH/SD no Laboratório Orbit Conecta (CEMI 2)!`,
+    `Sua demanda "${submission.title}" (${submission.organization}) — protocolo ${submission.protocol} — foi APROVADA pela Coordenação SMED e já vai ser produzida pelas Turmas AH/SD no Laboratório Orbit Conecta (SMED Cianorte)!`,
     '',
     `📋 Acompanhe cada etapa em tempo real pelo link: ${protocolUrl}`,
   ].join('\n');
@@ -49,7 +49,7 @@ export function buildApprovalNotificationText(submission: PortalSubmission): {
     ? `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`
     : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-  const subject = `[Orbit Conecta · ${submission.protocol}] Demanda aprovada para produção no CEMI 2`;
+  const subject = `[Orbit Conecta · ${submission.protocol}] Demanda aprovada para produção no Laboratório`;
   const mailtoHref = `mailto:${encodeURIComponent(
     submission.requesterEmail ?? ''
   )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
@@ -100,7 +100,7 @@ export const ApprovalNotifyModal: React.FC<ApprovalNotifyModalProps> = ({
                 Demanda Aprovada para Produção!
               </h3>
               <p className="text-[11px] text-emerald-200">
-                Protocolo {submission.protocol} · Sala "{demand?.shortName ?? submission.title}" aberta no CEMI 2
+                Protocolo {submission.protocol} · Sala "{demand?.shortName ?? submission.title}" aberta no Laboratório
               </p>
             </div>
           </div>

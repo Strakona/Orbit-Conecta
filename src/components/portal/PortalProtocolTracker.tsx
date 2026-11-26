@@ -24,7 +24,7 @@ interface PortalProtocolTrackerProps {
 const STEPS = [
   'Recebida',
   'Em Triagem',
-  'Em Desenvolvimento no CEMI 2',
+  'Em Desenvolvimento no Laboratório',
   'Em Modo Teste',
   'Entregue na Vitrine Pública',
 ];
@@ -58,7 +58,7 @@ function statusPill(sub: PortalSubmission, linkedDemand?: Demand): { label: stri
   }
   if (sub.status === 'APROVADA_ORBIT') {
     return {
-      label: 'Em Desenvolvimento no CEMI 2',
+      label: 'Em Desenvolvimento no Laboratório',
       cls: 'bg-sky-100 text-sky-800 border-sky-300',
     };
   }
@@ -150,7 +150,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
     ) {
       pushToast(
         '🎉 Sua demanda foi aprovada!',
-        'A Coordenação SMED liberou sua demanda para produção no CEMI 2.',
+        'A Coordenação SMED liberou sua demanda para produção no Laboratório.',
         'success'
       );
     }
@@ -326,7 +326,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
             <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-1.5">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-sky-600" />
-                <span>Resumo da Solução Digital (CEMI 2)</span>
+                <span>Resumo da Solução Digital (Lab. Inovação)</span>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed">
                 {activeSubmission.analysis.friendlySummary}
@@ -341,7 +341,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                     <div className="font-display font-bold text-sm text-sky-950 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
-                        🎉 Demanda Aprovada — Vai ser produzida pelas Turmas AH/SD no CEMI 2!
+                        🎉 Demanda Aprovada — Vai ser produzida pelas Turmas AH/SD no Laboratório!
                       </span>
                     </div>
                     {activeSubmission.approvedAt && (
@@ -483,7 +483,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
               <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-3">
                 <div className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
                   <MessageCircle className="w-4 h-4 text-amber-600" />
-                  <span>Conversa com o Mentor do CEMI 2</span>
+                  <span>Conversa com o Mentor do Laboratório</span>
                 </div>
 
                 <div className="space-y-2">
@@ -497,7 +497,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                       }`}
                     >
                       <div className="font-bold text-[10px] uppercase opacity-75 mb-1">
-                        {entry.author === 'MENTOR' ? 'Professor Mentor · CEMI 2' : 'Sua Resposta'}
+                        {entry.author === 'MENTOR' ? 'Professor Mentor · Lab. Inovação' : 'Sua Resposta'}
                       </div>
                       <p className="leading-relaxed">{entry.message}</p>
                     </div>
@@ -518,7 +518,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>Responder ao CEMI 2</span>
+                      <span>Responder ao Laboratório</span>
                     </button>
                   </form>
                 )}
@@ -535,7 +535,7 @@ export const PortalProtocolTracker: React.FC<PortalProtocolTrackerProps> = ({
             <div className="bg-[#0B132B] text-white px-5 py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase text-emerald-300 font-bold">
-                  Solução Digital CEMI 2 · SMED Cianorte
+                  Solução Digital · Laboratório de Inovação SMED Cianorte
                 </span>
                 <h3 className="font-display font-bold text-base">{previewDemand.title}</h3>
               </div>

@@ -114,7 +114,7 @@ export const DeliveredAppView: React.FC<DeliveredAppViewProps> = ({
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/40 text-emerald-200 text-[10px] font-bold flex items-center gap-1">
                   <Flower2 className="w-3 h-3" />
-                  <span>{demand.status === 'ENTREGUE' ? 'Entrega Oficial CEMI 2' : 'Pré-visualização'}</span>
+                  <span>{demand.status === 'ENTREGUE' ? 'Entrega Oficial SMED' : 'Pré-visualização'}</span>
                 </span>
               </div>
               <div className="text-[11px] text-slate-300">
@@ -219,7 +219,7 @@ export const DeliveredAppView: React.FC<DeliveredAppViewProps> = ({
                   <input
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Deixe um recado para os estudantes do CEMI 2 (opcional)..."
+                    placeholder="Deixe um recado para os estudantes do Laboratório (opcional)..."
                     className="flex-1 rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
                   />
                   <button
@@ -237,7 +237,7 @@ export const DeliveredAppView: React.FC<DeliveredAppViewProps> = ({
         <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>
-            Solução digital pública · Laboratório de Inovação Pedagógica (CEMI 2 / SMED Cianorte).
+            Solução digital pública · Laboratório de Inovação Pedagógica (SMED Cianorte).
           </span>
         </div>
       </main>

@@ -35,7 +35,7 @@ export const IsometricMap: React.FC<IsometricMapProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-display font-bold text-slate-900 mr-1">
-            Escritório Vivo Habblaud · CEMI 2
+            Escritório Vivo Habblaud · Lab. Inovação
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 border border-sky-200 font-medium">
             <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />

@@ -124,7 +124,7 @@ export const StudentBadgeManager: React.FC<StudentBadgeManagerProps> = ({
         <div>
           <h3 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
             <BadgeCheck className="w-5 h-5 text-sky-600" />
-            <span>Gestão de Estudantes & Crachás (CEMI 2)</span>
+            <span>Gestão de Estudantes & Crachás (SMED)</span>
           </h3>
           <p className="text-xs text-slate-600">
             Cadastre individualmente ou cole uma lista de nomes para gerar crachás{' '}
